@@ -17,6 +17,7 @@ import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
 import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.UserRepository;
 import cn.huntercat.lieshoucloudpro.user.service.AuditService;
+import cn.huntercat.lieshoucloudpro.user.service.TenantRegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,11 +42,17 @@ public class TenantController {
   private final TenantRepository repo;
   private final UserRepository userRepo;
   private final AuditService audit;
+  private final TenantRegistrationService registration;
 
-  public TenantController(TenantRepository repo, UserRepository userRepo, AuditService audit) {
+  public TenantController(
+      TenantRepository repo,
+      UserRepository userRepo,
+      AuditService audit,
+      TenantRegistrationService registration) {
     this.repo = repo;
     this.userRepo = userRepo;
     this.audit = audit;
+    this.registration = registration;
   }
 
   @Operation(summary = "List all tenants", description = "Return every tenant (no pagination yet).")
@@ -82,6 +89,44 @@ public class TenantController {
     return repo.findById(id)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  @Operation(
+      summary = "Self-service tenant registration (public)",
+      description = "创建租户 + 管理员（TENANT_ADMIN），注册即开通（ACTIVE 可直接登录）。公开端点，无鉴权。")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Registered tenant + admin"),
+    @ApiResponse(responseCode = "400", description = "Invalid input / code taken / weak password")
+  })
+  @PostMapping("/register")
+  public ResponseEntity<?> register(
+      @Valid @RequestBody RegisterTenantRequest body, jakarta.servlet.http.HttpServletRequest req) {
+    try {
+      TenantRegistrationService.RegistrationResult result =
+          registration.register(
+              body.tenantName(),
+              body.tenantCode(),
+              body.username(),
+              body.displayName(),
+              body.password(),
+              body.email());
+      audit.recordSuccess(
+          result.tenant().getId(),
+          null,
+          AuditLog.Action.CREATE,
+          "TENANT",
+          result.tenant().getId(),
+          "自助开通租户 " + result.tenant().getName() + " (" + result.tenant().getCode() + ")",
+          req);
+      return ResponseEntity.ok(
+          Map.of(
+              "tenant", result.tenant(),
+              "adminUsername", result.adminUsername(),
+              "adminDisplayName", result.adminDisplayName()));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "REGISTER_INVALID", "message", e.getMessage()));
+    }
   }
 
   @Operation(
@@ -260,6 +305,15 @@ public class TenantController {
       @jakarta.validation.constraints.NotBlank String name,
       @jakarta.validation.constraints.NotBlank String code,
       String edition) {}
+
+  /** 租户自助开通请求体（公开端点 · SaaS 增长路径 · issue #24） */
+  public record RegisterTenantRequest(
+      @jakarta.validation.constraints.NotBlank String tenantName,
+      @jakarta.validation.constraints.NotBlank String tenantCode,
+      @jakarta.validation.constraints.NotBlank String username,
+      @jakarta.validation.constraints.NotBlank String displayName,
+      @jakarta.validation.constraints.NotBlank String password,
+      String email) {}
 
   /** Phase 8: UpdateTenantRequest DTO（内联；name/status/edition 均可选） */
   public record UpdateTenantRequest(String name, String status, String edition) {}
