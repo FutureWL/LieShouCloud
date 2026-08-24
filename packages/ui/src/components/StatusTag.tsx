@@ -8,10 +8,10 @@
  *   - 让组件保持 dumb（不依赖业务枚举字符串）
  *   - 跨业务复用：User/Customer/Tenant/后续角色等都可传自己的 META
  */
-import { Tag } from 'antd';
-import type { ReactNode } from 'react';
+import { Tag } from "antd";
+import type { ReactNode } from "react";
 
-import type { StatusMeta } from '@lieshoucloud/types';
+import type { StatusMeta } from "@lieshoucloud/types";
 
 interface StatusTagProps {
   meta: StatusMeta;

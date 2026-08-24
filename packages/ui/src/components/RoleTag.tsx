@@ -3,19 +3,19 @@
  *
  * 平台/租户管理员/普通用户三档颜色：gold / orange / blue.
  */
-import { Tag } from 'antd';
-import type { ReactNode } from 'react';
+import { Tag } from "antd";
+import type { ReactNode } from "react";
 
-import type { RoleTagColor } from '@lieshoucloud/types';
+import type { RoleTagColor } from "@lieshoucloud/types";
 
 export const ROLE_COLORS: Record<string, RoleTagColor> = {
-  PLATFORM_ADMIN: 'gold',
-  TENANT_ADMIN: 'orange',
-  ADMIN: 'orange', // 别名（V5 迁移期）
-  USER: 'blue',
+  PLATFORM_ADMIN: "gold",
+  TENANT_ADMIN: "orange",
+  ADMIN: "orange", // 别名（V5 迁移期）
+  USER: "blue",
 };
 
-const DEFAULT_COLOR: RoleTagColor = 'blue';
+const DEFAULT_COLOR: RoleTagColor = "blue";
 
 interface RoleTagProps {
   role: string;

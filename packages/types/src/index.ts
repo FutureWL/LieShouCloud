@@ -11,7 +11,7 @@ export type ApiResponse<T> = {
 };
 
 // -------- 健康状态 / 跨端共享 --------
-export type HealthStatus = 'up' | 'down' | 'degraded';
+export type HealthStatus = "up" | "down" | "degraded";
 
 // -------- 状态元数据（Phase 9 共享给 ui 包的 StatusTag） --------
 /** 状态 → 中文文本 + antd Tag 颜色 */
@@ -21,10 +21,7 @@ export interface StatusMeta {
 }
 
 /** 安全查找：避免任何 key 不存在的运行时崩 */
-export function getStatusMeta<T extends string>(
-  meta: Record<T, StatusMeta>,
-  key: T,
-): StatusMeta {
+export function getStatusMeta<T extends string>(meta: Record<T, StatusMeta>, key: T): StatusMeta {
   return meta[key];
 }
 
@@ -34,7 +31,7 @@ export type RoleTagColor = string;
 // -------- 用户视图（与 user-service 字段对齐） --------
 // Phase 5+ 由 OpenAPI 自动派生。passwordHash 后端 WRITE_ONLY，绝不下发。
 
-export type UserStatus = 'ACTIVE' | 'DISABLED' | 'LOCKED';
+export type UserStatus = "ACTIVE" | "DISABLED" | "LOCKED";
 
 export interface UserDTO {
   id: number;
@@ -64,7 +61,7 @@ export interface TokenResponse {
   accessToken: string;
   refreshToken: string;
   expiresIn: number; // seconds
-  tokenType: 'Bearer';
+  tokenType: "Bearer";
   userId: number;
   username: string;
 }

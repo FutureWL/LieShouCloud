@@ -21,12 +21,12 @@
 
 产品差异不是"多套东西"，而是四个**互相独立（正交）**的维度取值。任意组合都合法。
 
-| 维度 | 取值 | 说明 |
-| --- | --- | --- |
-| ① 能力域组合 | core + crm/erp/oa/wms/mes/iot/legal/edu… | 行业领域能力，可插拔 |
-| ② 部署形态 | monolith / msa | 单体 or 微服务，运行时可切换 |
-| ③ 数据库 | mysql / postgres | 纯配置差异，代码只写 JPA |
-| ④ 部署位置 | cloud（平台托管）/ on-premise（客户机房私有化） | 私有化 = 挂 license / 升级 / 运维组件 |
+| 维度         | 取值                                            | 说明                                  |
+| ------------ | ----------------------------------------------- | ------------------------------------- |
+| ① 能力域组合 | core + crm/erp/oa/wms/mes/iot/legal/edu…        | 行业领域能力，可插拔                  |
+| ② 部署形态   | monolith / msa                                  | 单体 or 微服务，运行时可切换          |
+| ③ 数据库     | mysql / postgres                                | 纯配置差异，代码只写 JPA              |
+| ④ 部署位置   | cloud（平台托管）/ on-premise（客户机房私有化） | 私有化 = 挂 license / 升级 / 运维组件 |
 
 **正交的意义**：组合 = 一个 profile group + 一份客户档案，永远不会产生分支代码。
 
@@ -51,17 +51,17 @@ services/                          # 能力域平铺（每个域 = 可独立装�
 
 ### 2.1 能力域边界约定
 
-| 能力域 | 边界 | 与相邻域的关系 |
-| --- | --- | --- |
-| core | 全行业共用的平台能力 | 唯一被所有域依赖的地基，API 必须稳定 |
-| crm | 客户关系全生命周期 | 会员 / 营销开关化扩展 |
-| erp | 进销存 + 财务 + 计费 | 行业增强（如药店 GSP 批号/效期）用功能开关，不建独立域 |
-| oa | 考勤 / 公告 / 日程 / 流程门户 | 审批引擎不重复建设，复用 core.approval |
-| wms | 库位 / 拣货 / 盘点 / 出入库单 | 深化 erp.inventory，不重复物料主数据 |
-| mes | 车间执行（工单 / 工序 / 报工 / 质量追溯） | 消费 iot 时序数据；报工回写 erp |
-| iot | 设备接入 / 采集 / 时序 / 告警 / 组态监控 | **SCADA 并入本域**，避免两套采集系统 |
-| legal | 案件 / 卷宗 / 文书 / 计时计费 | 客户管理复用 crm 模式 |
-| edu | 课程 / 排课 / 课时 / 教务 | 收费 / 退款复用 erp 计费 |
+| 能力域 | 边界                                      | 与相邻域的关系                                         |
+| ------ | ----------------------------------------- | ------------------------------------------------------ |
+| core   | 全行业共用的平台能力                      | 唯一被所有域依赖的地基，API 必须稳定                   |
+| crm    | 客户关系全生命周期                        | 会员 / 营销开关化扩展                                  |
+| erp    | 进销存 + 财务 + 计费                      | 行业增强（如药店 GSP 批号/效期）用功能开关，不建独立域 |
+| oa     | 考勤 / 公告 / 日程 / 流程门户             | 审批引擎不重复建设，复用 core.approval                 |
+| wms    | 库位 / 拣货 / 盘点 / 出入库单             | 深化 erp.inventory，不重复物料主数据                   |
+| mes    | 车间执行（工单 / 工序 / 报工 / 质量追溯） | 消费 iot 时序数据；报工回写 erp                        |
+| iot    | 设备接入 / 采集 / 时序 / 告警 / 组态监控  | **SCADA 并入本域**，避免两套采集系统                   |
+| legal  | 案件 / 卷宗 / 文书 / 计时计费             | 客户管理复用 crm 模式                                  |
+| edu    | 课程 / 排课 / 课时 / 教务                 | 收费 / 退款复用 erp 计费                               |
 
 ---
 
@@ -69,18 +69,18 @@ services/                          # 能力域平铺（每个域 = 可独立装�
 
 **行业 = 组合，永远不是代码单元。** 新行业客户到来时，先查下表套组合；组合不够再加能力域（见 §8 沉淀规则）。
 
-| 行业客户 | 能力域组合 | 主要新开发 | 典型形态 |
-| --- | --- | --- | --- |
-| 通用企业 SaaS | core + crm + erp | 无（现有） | msa · pg · cloud |
-| 物联网采集平台 | core + iot（可选 crm） | iot 域 | monolith/msa · mysql/pg · on-premise |
-| 智能制造 | core + crm + erp + mes + iot | mes 域 | msa · pg · on-premise |
-| MES 单点交付 | core + mes + iot | mes 域 | monolith · mysql · on-premise |
-| 律所 | core + crm + legal | legal 域 | monolith · pg · on-premise |
-| 教培 | core + crm + erp + edu | edu 域 | monolith · mysql · on-premise |
-| 商场 | core + crm + erp + oa + iot | 低（组合为主） | monolith · pg · on-premise |
-| 零售 | core + crm + erp + iot | 低（组合为主） | monolith/msa · pg · cloud |
-| 药店 | core + crm + erp + iot + oa | erp 的 gsp 开关 + iot 温湿度 | monolith · mysql · on-premise |
-| 制衣厂 | core + crm + erp + mes + iot | mes 域行业适配 | msa · pg · on-premise |
+| 行业客户       | 能力域组合                   | 主要新开发                   | 典型形态                             |
+| -------------- | ---------------------------- | ---------------------------- | ------------------------------------ |
+| 通用企业 SaaS  | core + crm + erp             | 无（现有）                   | msa · pg · cloud                     |
+| 物联网采集平台 | core + iot（可选 crm）       | iot 域                       | monolith/msa · mysql/pg · on-premise |
+| 智能制造       | core + crm + erp + mes + iot | mes 域                       | msa · pg · on-premise                |
+| MES 单点交付   | core + mes + iot             | mes 域                       | monolith · mysql · on-premise        |
+| 律所           | core + crm + legal           | legal 域                     | monolith · pg · on-premise           |
+| 教培           | core + crm + erp + edu       | edu 域                       | monolith · mysql · on-premise        |
+| 商场           | core + crm + erp + oa + iot  | 低（组合为主）               | monolith · pg · on-premise           |
+| 零售           | core + crm + erp + iot       | 低（组合为主）               | monolith/msa · pg · cloud            |
+| 药店           | core + crm + erp + iot + oa  | erp 的 gsp 开关 + iot 温湿度 | monolith · mysql · on-premise        |
+| 制衣厂         | core + crm + erp + mes + iot | mes 域行业适配               | msa · pg · on-premise                |
 
 ---
 
@@ -127,11 +127,11 @@ public class IotMonolithApplication { ... }
 
 ### 4.4 演进路径
 
-| 阶段 | 形态 | 说明 |
-| --- | --- | --- |
-| 物联网 V1 | 单体 | 一个进程 = core + iot，本地调用，单库，无 Nacos |
-| 物联网 V2 | 微服务 | profile 切 msa → Feign 适配器；collector 先拆出独立伸缩；开 Nacos + gateway；数据拆库（迁移工具一次性） |
-| SaaS | 始终微服务 | 现有 8 服务 + gateway + Nacos |
+| 阶段      | 形态       | 说明                                                                                                    |
+| --------- | ---------- | ------------------------------------------------------------------------------------------------------- |
+| 物联网 V1 | 单体       | 一个进程 = core + iot，本地调用，单库，无 Nacos                                                         |
+| 物联网 V2 | 微服务     | profile 切 msa → Feign 适配器；collector 先拆出独立伸缩；开 Nacos + gateway；数据拆库（迁移工具一次性） |
+| SaaS      | 始终微服务 | 现有 8 服务 + gateway + Nacos                                                                           |
 
 ---
 
@@ -159,21 +159,21 @@ pom 中两个驱动均以 `runtime` 依赖引入，Hibernate 6 按 JDBC 驱动�
 
 ### 5.2 可移植性纪律
 
-| 容易踩的坑 | 正确写法 |
-| --- | --- |
-| 原生 SQL（nativeQuery） | 一律 JPQL / Criteria；必须原生 SQL 时禁用方言专属函数（ILIKE、PG 专属函数） |
-| JSON 列（jsonb vs json） | `@JdbcTypeCode(SqlTypes.JSON)`，Hibernate 6 自动映射 |
-| 主键生成 | `GenerationType.IDENTITY`，两库均支持 |
-| 布尔 | Boolean 自动映射（PG boolean / MySQL tinyint(1)） |
-| 时间 | `Instant` / `OffsetDateTime` |
-| 生产建表 | 禁止 ddl-auto，走迁移工具（见 §5.3） |
+| 容易踩的坑               | 正确写法                                                                    |
+| ------------------------ | --------------------------------------------------------------------------- |
+| 原生 SQL（nativeQuery）  | 一律 JPQL / Criteria；必须原生 SQL 时禁用方言专属函数（ILIKE、PG 专属函数） |
+| JSON 列（jsonb vs json） | `@JdbcTypeCode(SqlTypes.JSON)`，Hibernate 6 自动映射                        |
+| 主键生成                 | `GenerationType.IDENTITY`，两库均支持                                       |
+| 布尔                     | Boolean 自动映射（PG boolean / MySQL tinyint(1)）                           |
+| 时间                     | `Instant` / `OffsetDateTime`                                                |
+| 生产建表                 | 禁止 ddl-auto，走迁移工具（见 §5.3）                                        |
 
 ### 5.3 数据库迁移
 
-| 方案 | 做法 | 适用 |
-| --- | --- | --- |
-| Flyway | 按库分目录：`db/migration`（通用）+ `db/migration-mysql`（MySQL 专属）+ `db/migration-postgresql`（PG 专属），profile 指不同 locations | 已用 Flyway 的项目 |
-| Liquibase | 变更集写中立 YAML/XML，自动按目标库生成方言 SQL，一份 changelog 管所有库 | 新项目推荐 |
+| 方案      | 做法                                                                                                                                   | 适用               |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Flyway    | 按库分目录：`db/migration`（通用）+ `db/migration-mysql`（MySQL 专属）+ `db/migration-postgresql`（PG 专属），profile 指不同 locations | 已用 Flyway 的项目 |
+| Liquibase | 变更集写中立 YAML/XML，自动按目标库生成方言 SQL，一份 changelog 管所有库                                                               | 新项目推荐         |
 
 ### 5.4 CI 双库矩阵（质量兜底）
 
@@ -190,18 +190,18 @@ Testcontainers 在 CI 跑矩阵 `[postgres:16, mysql:8]`，同一套集成测试
 spring:
   profiles:
     group:
-      saas:                 [core, crm, erp, msa, db-postgres, cloud]
-      iot-monolith-mysql:   [core, iot, monolith, db-mysql, on-premise]
-      iot-monolith-pg:      [core, iot, monolith, db-postgres, on-premise]
-      iot-msa-pg:           [core, iot, msa, db-postgres, on-premise]
-      iot-msa-pg-cloud:     [core, iot, msa, db-postgres, cloud]
-      smart-mfg-msa:        [core, crm, erp, mes, iot, msa, db-postgres, on-premise]
-      mes-monolith:         [core, mes, iot, monolith, db-mysql, on-premise]
-      legal-monolith:       [core, crm, legal, monolith, db-postgres, on-premise]
-      edu-monolith:         [core, crm, erp, edu, monolith, db-mysql, on-premise]
-      mall-monolith:        [core, crm, erp, oa, iot, monolith, db-postgres, on-premise]
-      retail-msa-cloud:     [core, crm, erp, iot, msa, db-postgres, cloud]
-      pharmacy-monolith:    [core, crm, erp, iot, oa, monolith, db-mysql, on-premise]
+      saas: [core, crm, erp, msa, db-postgres, cloud]
+      iot-monolith-mysql: [core, iot, monolith, db-mysql, on-premise]
+      iot-monolith-pg: [core, iot, monolith, db-postgres, on-premise]
+      iot-msa-pg: [core, iot, msa, db-postgres, on-premise]
+      iot-msa-pg-cloud: [core, iot, msa, db-postgres, cloud]
+      smart-mfg-msa: [core, crm, erp, mes, iot, msa, db-postgres, on-premise]
+      mes-monolith: [core, mes, iot, monolith, db-mysql, on-premise]
+      legal-monolith: [core, crm, legal, monolith, db-postgres, on-premise]
+      edu-monolith: [core, crm, erp, edu, monolith, db-mysql, on-premise]
+      mall-monolith: [core, crm, erp, oa, iot, monolith, db-postgres, on-premise]
+      retail-msa-cloud: [core, crm, erp, iot, msa, db-postgres, cloud]
+      pharmacy-monolith: [core, crm, erp, iot, oa, monolith, db-mysql, on-premise]
 ```
 
 启动只选一个：`--spring.profiles.active=iot-monolith-mysql`，产品、形态、数据库、位置一次全定。
@@ -213,16 +213,16 @@ Spring Boot 配置优先级：**客户档案 > 产品 profile > 基础配置**�
 ```yaml
 # customer-a/config/application-customer-a.yml（交付目录，不在代码库）
 app:
-  brand: 某某集团工业物联网平台      # 品牌定制
+  brand: 某某集团工业物联网平台 # 品牌定制
   domain: iot.corp-a.com
-  modules:                          # 功能开关
+  modules: # 功能开关
     alarm: true
     data-export: false
 spring:
-  datasource:                       # 客户数据库（密码绝不进 git）
+  datasource: # 客户数据库（密码绝不进 git）
     url: jdbc:mysql://10.0.0.5:3306/iot_a
     username: ${DB_USER}
-    password: ${DB_PASSWORD}        # 从交付环境注入 / Vault
+    password: ${DB_PASSWORD} # 从交付环境注入 / Vault
 ```
 
 ```bash
@@ -260,11 +260,11 @@ deploy/
 
 所有私有化交付（IoT / 律所 / 药店…）统一挂载，代码只写一份：
 
-| 组件 | 能力 | 说明 |
-| --- | --- | --- |
-| license | 离线激活、机器码绑定、授权期限 | 按年付费的行业惯例 |
-| upgrade | 离线升级包、版本校验、数据迁移 | 迁移用 Flyway/Liquibase |
-| heartbeat | 可选心跳上报 / 远程支持 | 隐私开关，默认关 |
+| 组件      | 能力                           | 说明                    |
+| --------- | ------------------------------ | ----------------------- |
+| license   | 离线激活、机器码绑定、授权期限 | 按年付费的行业惯例      |
+| upgrade   | 离线升级包、版本校验、数据迁移 | 迁移用 Flyway/Liquibase |
+| heartbeat | 可选心跳上报 / 远程支持        | 隐私开关，默认关        |
 
 ---
 
@@ -290,14 +290,14 @@ deploy/
 
 平台保存采集目标 / 目标服务器的 IP、账号、密码是**标准产品功能**（工业现场不可能每次连接手输密码），但必须按安全工程实现：
 
-| 要求 | 实现 |
-| --- | --- |
+| 要求     | 实现                                                                          |
+| -------- | ----------------------------------------------------------------------------- |
 | 加密存储 | 密码 AES-GCM 加密存密文；主密钥放环境变量 / KMS / Vault，不进数据库、不进代码 |
-| 展示脱敏 | 列表页只显示 IP / 账号，密码只显示"已配置"，仅允许重置，永不回显明文 |
-| 权限隔离 | 仅运维角色 / 指定部门可查看修改，走现有 RBAC |
-| 审计日志 | 记录谁在何时修改了哪个目标的凭据 |
-| 传输加密 | 采集器 ↔ 平台之间 TLS |
-| 禁止入库 | 任何情况下凭据明文不进入 git 历史（仓库已有 gitleaks 扫描，保持启用） |
+| 展示脱敏 | 列表页只显示 IP / 账号，密码只显示"已配置"，仅允许重置，永不回显明文          |
+| 权限隔离 | 仅运维角色 / 指定部门可查看修改，走现有 RBAC                                  |
+| 审计日志 | 记录谁在何时修改了哪个目标的凭据                                              |
+| 传输加密 | 采集器 ↔ 平台之间 TLS                                                        |
+| 禁止入库 | 任何情况下凭据明文不进入 git 历史（仓库已有 gitleaks 扫描，保持启用）         |
 
 生产更高标准（二期可选）：HashiCorp Vault 动态拉取凭据；采集器侧非对称加密握手。
 
@@ -307,39 +307,39 @@ deploy/
 
 现有 `apps/`（admin / desktop / mini-program / mobile）+ `packages/{ui, api-client, config, types}` 的多入口模式直接套用：**一个后端 API 服务所有前端入口，入口差异 = 路由 / 菜单 / 主题，数据权限由 RBAC 控制。**
 
-| 行业 | 前端入口 |
-| --- | --- |
-| SaaS | admin（现有） |
-| 物联网 | iot-console（设备管理 / 采集监控 / 告警大屏） |
-| 律所 | law-office-admin + lawyer-workbench + client-portal + client-portal-mini |
-| 教培 | 机构管理端 + 家长小程序 |
-| 商场 | 运营端 + 商户自助端（查账单缴费） |
-| 零售 / 药店 | 门店 POS + 管理端 |
-| 制衣厂 | 车间工位看板 + 管理端 |
+| 行业        | 前端入口                                                                 |
+| ----------- | ------------------------------------------------------------------------ |
+| SaaS        | admin（现有）                                                            |
+| 物联网      | iot-console（设备管理 / 采集监控 / 告警大屏）                            |
+| 律所        | law-office-admin + lawyer-workbench + client-portal + client-portal-mini |
+| 教培        | 机构管理端 + 家长小程序                                                  |
+| 商场        | 运营端 + 商户自助端（查账单缴费）                                        |
+| 零售 / 药店 | 门店 POS + 管理端                                                        |
+| 制衣厂      | 车间工位看板 + 管理端                                                    |
 
 ---
 
 ## 11. 落地优先级
 
-| 优先级 | 事项 | 说明 |
-| --- | --- | --- |
-| P0 | core 上提通用能力（approval / file / notify / audit） | 三线共用地基，动一次以后都受益 |
-| P0 | 定 profile groups（§6.1） | 半小时立骨架 |
-| P1 | 建 deploy/products/ 拓扑模板 + deploy/customers/ 档案结构 | 交付层立起来 |
-| P1 | 客户配置层 + 功能开关机制（§6.2 / §8.1） | 防分叉的根基 |
-| P1 | 服务间调用改造为接口 + 双实现（§4.2） | 单体↔微服务演进的前提 |
-| P2 | 建各行业能力域（mes / iot / legal / edu…） | 属于新开发大头 |
-| P2 | CI 双库矩阵（Testcontainers） | 可移植性自动化兜底 |
-| P3 | 私有化交付组件（license / upgrade / heartbeat） | 接 on-premise 客户前完成 |
+| 优先级 | 事项                                                      | 说明                           |
+| ------ | --------------------------------------------------------- | ------------------------------ |
+| P0     | core 上提通用能力（approval / file / notify / audit）     | 三线共用地基，动一次以后都受益 |
+| P0     | 定 profile groups（§6.1）                                 | 半小时立骨架                   |
+| P1     | 建 deploy/products/ 拓扑模板 + deploy/customers/ 档案结构 | 交付层立起来                   |
+| P1     | 客户配置层 + 功能开关机制（§6.2 / §8.1）                  | 防分叉的根基                   |
+| P1     | 服务间调用改造为接口 + 双实现（§4.2）                     | 单体↔微服务演进的前提         |
+| P2     | 建各行业能力域（mes / iot / legal / edu…）                | 属于新开发大头                 |
+| P2     | CI 双库矩阵（Testcontainers）                             | 可移植性自动化兜底             |
+| P3     | 私有化交付组件（license / upgrade / heartbeat）           | 接 on-premise 客户前完成       |
 
 ---
 
 ## 12. 决策记录
 
-| 日期 | 决策 | 理由 |
-| --- | --- | --- |
-| 2026-xx-xx | 采用"core + 能力域 + 四维正交装配"模型 | 覆盖 SaaS / IoT / 律所 / 教培 / 零售 / 药店 / 制衣厂等多行业，最大化复用 |
-| 2026-xx-xx | 模块化单体先行，配置驱动演进微服务 | 中小客户单体交付，大客户微服务，业务代码不重写 |
-| 2026-xx-xx | 数据库差异纯配置化（PG/MySQL），代码只写 JPA | 不同客户要求不同数据库，CI 双库矩阵兜底 |
-| 2026-xx-xx | SCADA 并入 iot 域；WMS 作为 erp 深化域；OA 复用 core 审批引擎 | 避免能力重叠导致两套系统 |
-| 2026-xx-xx | 行业 ≠ 能力域；建域只建能力 | 防止能力域随行业数量爆炸 |
+| 日期       | 决策                                                          | 理由                                                                     |
+| ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 2026-xx-xx | 采用"core + 能力域 + 四维正交装配"模型                        | 覆盖 SaaS / IoT / 律所 / 教培 / 零售 / 药店 / 制衣厂等多行业，最大化复用 |
+| 2026-xx-xx | 模块化单体先行，配置驱动演进微服务                            | 中小客户单体交付，大客户微服务，业务代码不重写                           |
+| 2026-xx-xx | 数据库差异纯配置化（PG/MySQL），代码只写 JPA                  | 不同客户要求不同数据库，CI 双库矩阵兜底                                  |
+| 2026-xx-xx | SCADA 并入 iot 域；WMS 作为 erp 深化域；OA 复用 core 审批引擎 | 避免能力重叠导致两套系统                                                 |
+| 2026-xx-xx | 行业 ≠ 能力域；建域只建能力                                   | 防止能力域随行业数量爆炸                                                 |

@@ -11,13 +11,13 @@
 
 ## 开发环境
 
-| 依赖 | 版本 |
-| --- | --- |
-| JDK | 21 |
-| Maven | 3.9+ |
-| Node.js | 22+（pnpm） |
-| PostgreSQL | 16 |
-| Nacos | 2.x |
+| 依赖       | 版本        |
+| ---------- | ----------- |
+| JDK        | 21          |
+| Maven      | 3.9+        |
+| Node.js    | 22+（pnpm） |
+| PostgreSQL | 16          |
+| Nacos      | 2.x         |
 
 ## 提交规范
 
