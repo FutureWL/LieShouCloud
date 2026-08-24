@@ -44,6 +44,13 @@
         <!-- ===== 测试 ===== -->
         <h2.version>2.2.224</h2.version>
 
+        <!-- ===== Testcontainers：覆盖 spring-boot BOM（1.21.3）
+             升 1.21.4 —— 修复 Docker Desktop socket 代理 400：docker-java 3.4.0 发空 Host header
+             被代理拒绝（BadRequest 400 / Could not find a valid Docker environment），3.4.1 起修复
+             注意：仅设属性无效（Maven 3.9 下 BOM 内部属性优先），必须把 testcontainers-bom
+             显式 import 到 dependencyManagement 最前（先声明者胜） ===== -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+
         <!-- ===== CSV 导入（数据导入工具 · Phase 9） ===== -->
         <commons-csv.version>1.12.0</commons-csv.version>
 
@@ -60,6 +67,16 @@
          ============================================================ -->
     <dependencyManagement>
         <dependencies>
+            <!-- Testcontainers BOM：**必须排在最前**（Maven dependencyManagement 先声明者胜）
+                 覆盖 spring-boot 管理的 1.21.3 → 1.21.4（修复 Docker Desktop socket 代理空 Host 400）
+                 仅设属性无效（Maven 3.9 下 BOM 内部属性优先于外部覆盖） -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
