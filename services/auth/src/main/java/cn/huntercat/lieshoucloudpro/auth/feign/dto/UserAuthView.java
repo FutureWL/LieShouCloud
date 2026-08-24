@@ -12,11 +12,15 @@ import java.util.List;
  * <p>Phase 6（ADR-0021）: 新增 {@code status}，登录时校验账户状态；null 兜底为 ACTIVE（兼容旧 user-service）.
  *
  * <p>Phase 8（ADR-0022）: 新增 {@code tenantId} / {@code tenantCode}，JWT 带租户维度.
+ *
+ * <p>Phase 10（ADR-0035）: 新增 {@code tenantName} / {@code tenantEdition}，登录时返回租户品牌/版别信息.
  */
 public record UserAuthView(
     Long id,
     Long tenantId,
     String tenantCode,
+    String tenantName,
+    String tenantEdition,
     String username,
     String displayName,
     String passwordHash,

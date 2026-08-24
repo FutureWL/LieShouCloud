@@ -30,6 +30,22 @@ public class Tenant {
     DISABLED
   }
 
+  /**
+   * 租户版别（与 tenants.edition CHECK 对齐 · ADR-0035 客户项目模型）.
+   *
+   * <p>版别 = 行业版 / 客户版标识，驱动前端门户/登录的品牌与功能开关； 同一套代码按 edition 渲染不同门户（客户差异进配置层，禁止 fork 仓库）。
+   */
+  public enum Edition {
+    /** 通用版（猎手云 Pro 默认，如 huntercat） */
+    GENERIC,
+    /** 法律行业版（律所/事务所） */
+    LAYER,
+    /** 教育行业版（教育机构） */
+    ZHIYE,
+    /** 精密制造版（制造企业） */
+    JMZZ
+  }
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Schema(
@@ -60,6 +76,14 @@ public class Tenant {
       requiredMode = Schema.RequiredMode.REQUIRED)
   private Status status = Status.ACTIVE;
 
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  @Schema(
+      description = "Edition (industry/customer edition): GENERIC | LAYER | ZHIYE | JMZZ",
+      example = "GENERIC",
+      requiredMode = Schema.RequiredMode.REQUIRED)
+  private Edition edition = Edition.GENERIC;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   @Schema(description = "Create timestamp", accessMode = Schema.AccessMode.READ_ONLY)
   private Instant createdAt;
@@ -73,6 +97,12 @@ public class Tenant {
   public Tenant(String name, String code) {
     this.name = name;
     this.code = code;
+  }
+
+  public Tenant(String name, String code, Edition edition) {
+    this.name = name;
+    this.code = code;
+    this.edition = edition == null ? Edition.GENERIC : edition;
   }
 
   @PrePersist
@@ -113,6 +143,14 @@ public class Tenant {
 
   public void setStatus(Status status) {
     this.status = status;
+  }
+
+  public Edition getEdition() {
+    return edition;
+  }
+
+  public void setEdition(Edition edition) {
+    this.edition = edition == null ? Edition.GENERIC : edition;
   }
 
   public Instant getCreatedAt() {

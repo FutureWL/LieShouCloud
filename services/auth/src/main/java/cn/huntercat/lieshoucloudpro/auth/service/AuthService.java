@@ -84,7 +84,15 @@ public class AuthService {
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
-        access, refresh, jwt.getAccessTtlSeconds(), "Bearer", user.id(), user.username());
+        access,
+        refresh,
+        jwt.getAccessTtlSeconds(),
+        "Bearer",
+        user.id(),
+        user.username(),
+        tenantCode,
+        user.tenantName(),
+        user.tenantEdition());
   }
 
   /** 登录成功回写 last_login_at（失败静默，不影响登录主流程）. */
@@ -156,6 +164,8 @@ public class AuthService {
     Number uid = (Number) created.get("id");
     Number tid = (Number) created.get("tenantId");
     String tcode = (String) created.getOrDefault("tenantCode", DEFAULT_TENANT_CODE);
+    String tname = (String) created.get("tenantName");
+    String tedition = (String) created.getOrDefault("tenantEdition", "GENERIC");
     return new TokenResponse(
         jwt.generateAccessToken(
             uid.longValue(),
@@ -167,7 +177,10 @@ public class AuthService {
         jwt.getAccessTtlSeconds(),
         "Bearer",
         uid.longValue(),
-        req.username());
+        req.username(),
+        tcode,
+        tname,
+        tedition);
   }
 
   /** 忘记密码：校验 code → 按 phone/email 查用户 → 改密 */
@@ -237,7 +250,15 @@ public class AuthService {
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
-        access, refresh, jwt.getAccessTtlSeconds(), "Bearer", user.id(), user.username());
+        access,
+        refresh,
+        jwt.getAccessTtlSeconds(),
+        "Bearer",
+        user.id(),
+        user.username(),
+        tcode,
+        user.tenantName(),
+        user.tenantEdition());
   }
 
   /**
@@ -263,8 +284,17 @@ public class AuthService {
     List<String> roles = c.get("roles", List.class);
     if (roles == null) roles = List.of("USER");
     String access = jwt.generateAccessToken(userId, tenantId, tenantCode, username, roles);
+    // refresh 保持纯 JWT 校验：tenantName/tenantEdition 未知，置 null（前端刷新不覆盖租户信息）
     return new TokenResponse(
-        access, req.refreshToken(), jwt.getAccessTtlSeconds(), "Bearer", userId, username);
+        access,
+        req.refreshToken(),
+        jwt.getAccessTtlSeconds(),
+        "Bearer",
+        userId,
+        username,
+        tenantCode,
+        null,
+        null);
   }
 
   /** 给 AuthController.me 用：从已验证的 JWT Claims 提取用户信息. */

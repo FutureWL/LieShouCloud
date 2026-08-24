@@ -38,7 +38,7 @@ import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.TokenResponse;
 class AuthRateLimitTest {
 
   private static final TokenResponse TOKENS =
-      new TokenResponse("at", "rt", 1800L, "Bearer", 1L, "admin");
+      new TokenResponse("at", "rt", 1800L, "Bearer", 1L, "admin", "huntercat", null, "GENERIC");
 
   @Autowired private MockMvc mockMvc;
 
