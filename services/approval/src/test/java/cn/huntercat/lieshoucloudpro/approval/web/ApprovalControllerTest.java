@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cn.huntercat.lieshoucloudpro.approval.PostgresTestSupport;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalAuditLogRepository;
-import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequestRepository;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
 import java.util.List;
@@ -29,17 +29,17 @@ import java.util.List;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional // 静态块共享容器下防跨测试类数据污染（issue #25 · 回滚 approval_requests）
 class ApprovalControllerTest extends PostgresTestSupport {
 
   @Autowired MockMvc mockMvc;
-  @Autowired ApprovalRequestRepository repo;
   @Autowired ApprovalAuditLogRepository auditRepo;
 
   @MockitoBean UserQueryClient userClient;
 
   @BeforeEach
   void cleanDb() {
-    repo.deleteAll();
+    // 审计走 REQUIRES_NEW 独立提交（ADR-0030 模式），事务回滚不到 → 每测试前清审计表
     auditRepo.deleteAll();
     when(userClient.listTenantUsers(any())).thenReturn(List.of());
   }
