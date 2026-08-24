@@ -214,7 +214,17 @@ public class UserController {
         saved.getId(),
         "创建用户 " + saved.getUsername(),
         req);
-    return ResponseEntity.ok(saved);
+    // 返回带租户信息（tenantCode/tenantName/tenantEdition）——auth-service 注册后直接签发
+    // JWT 需要；不返回 passwordHash（User 实体的敏感字段不外泄）。
+    return ResponseEntity.ok(
+        Map.of(
+            "id", saved.getId(),
+            "tenantId", saved.getTenantId(),
+            "tenantCode", tenant.getCode(),
+            "tenantName", tenant.getName(),
+            "tenantEdition", tenant.getEdition() == null ? "GENERIC" : tenant.getEdition().name(),
+            "username", saved.getUsername(),
+            "displayName", saved.getDisplayName()));
   }
 
   @Operation(
@@ -382,6 +392,8 @@ public class UserController {
                         u.getId(),
                         u.getTenantId(),
                         tenant.getCode(),
+                        tenant.getName(),
+                        tenant.getEdition() == null ? null : tenant.getEdition().name(),
                         u.getUsername(),
                         u.getDisplayName(),
                         u.getPasswordHash(),
@@ -450,6 +462,8 @@ public class UserController {
         u.getId(),
         u.getTenantId(),
         tenant == null ? null : tenant.getCode(),
+        tenant == null ? null : tenant.getName(),
+        tenant == null || tenant.getEdition() == null ? null : tenant.getEdition().name(),
         u.getUsername(),
         u.getDisplayName(),
         u.getPasswordHash(),

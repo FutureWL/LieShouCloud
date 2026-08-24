@@ -114,7 +114,11 @@ public class TenantController {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "TENANT_CODE_TAKEN", "code", body.code()));
     }
-    Tenant t = new Tenant(body.name(), body.code());
+    Tenant.Edition edition = parseEdition(body.edition());
+    if (body.edition() != null && !body.edition().isBlank() && edition == null) {
+      return ResponseEntity.badRequest().body(Map.of("error", "INVALID_EDITION"));
+    }
+    Tenant t = new Tenant(body.name(), body.code(), edition);
     Tenant saved = repo.save(t);
     audit.recordSuccess(
         parseLong(tenantHeader),
@@ -163,6 +167,13 @@ public class TenantController {
                   t.setStatus(Tenant.Status.valueOf(body.status()));
                 } catch (IllegalArgumentException e) {
                   return ResponseEntity.badRequest().body(Map.of("error", "INVALID_STATUS"));
+                }
+              }
+              if (body.edition() != null && !body.edition().isBlank()) {
+                try {
+                  t.setEdition(Tenant.Edition.valueOf(body.edition()));
+                } catch (IllegalArgumentException e) {
+                  return ResponseEntity.badRequest().body(Map.of("error", "INVALID_EDITION"));
                 }
               }
               Tenant saved = repo.save(t);
@@ -244,11 +255,22 @@ public class TenantController {
         .body(Map.of("error", "FORBIDDEN", "message", "requires PLATFORM_ADMIN"));
   }
 
-  /** Phase 8: CreateTenantRequest DTO（内联） */
+  /** Phase 8: CreateTenantRequest DTO（内联；edition 可选默认 GENERIC · ADR-0035） */
   public record CreateTenantRequest(
       @jakarta.validation.constraints.NotBlank String name,
-      @jakarta.validation.constraints.NotBlank String code) {}
+      @jakarta.validation.constraints.NotBlank String code,
+      String edition) {}
 
-  /** Phase 8: UpdateTenantRequest DTO（内联；name/status 均可选） */
-  public record UpdateTenantRequest(String name, String status) {}
+  /** Phase 8: UpdateTenantRequest DTO（内联；name/status/edition 均可选） */
+  public record UpdateTenantRequest(String name, String status, String edition) {}
+
+  /** 解析版别（空 → GENERIC；非法 → null 由调用方判定） */
+  private static Tenant.Edition parseEdition(String edition) {
+    if (edition == null || edition.isBlank()) return Tenant.Edition.GENERIC;
+    try {
+      return Tenant.Edition.valueOf(edition);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
 }

@@ -31,7 +31,13 @@ public final class AuthDtos {
       @Schema(description = "Access token TTL in seconds", example = "1800") long expiresIn,
       @Schema(description = "Token type", example = "Bearer") String tokenType,
       @Schema(description = "User id (uid claim)") Long userId,
-      @Schema(description = "Username (sub claim)") String username) {}
+      @Schema(description = "Username (sub claim)") String username,
+      @Schema(description = "Tenant code (tcode claim)", example = "huntercat") String tenantCode,
+      @Schema(description = "Tenant display name", example = "南昌猎手猫数字科技有限公司") String tenantName,
+      @Schema(
+              description = "Tenant edition: GENERIC | LAYER | ZHIYE | JMZZ (ADR-0035)",
+              example = "GENERIC")
+          String tenantEdition) {}
 
   @Schema(description = "Error response body")
   public record ErrorResponse(
