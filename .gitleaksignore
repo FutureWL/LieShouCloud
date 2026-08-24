@@ -1,0 +1,10 @@
+# gitleaks 忽略列表（仓库根）
+# 路径或正则匹配，都不会触发 secret 告警
+
+# 例子（运营期间按需要添加）：
+# README.md   ← 文件名规则排除
+# ***EXAMPLE***   ← 自定义关键字
+# 已知测试用假密钥
+test/fixtures/mock-*.key
+**/*.example
+**/.env.example

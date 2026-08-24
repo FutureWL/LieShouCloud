@@ -1,0 +1,6 @@
+# asdf / mise 通用版本锁定文件
+# 详细策略见 README.md「技术栈 & 版本矩阵」一节。
+# 后端 Java 25 LTS、前端 Node 22 LTS，刻意不锁 patch 版本，
+# 因为 patch 之间通常只修 bug、不会改 API。
+java     21
+nodejs   22

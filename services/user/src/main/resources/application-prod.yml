@@ -1,0 +1,19 @@
+# prod profile - 生产配置
+# 原则（OPERATIONS.md §3.1 / ADR-0029）：
+#   - secret 一律环境变量注入（.env.prod 的 DB_* / POSTGRES_*），仓库内无默认值（缺失即启动失败）
+#   - Nacos Config（NACOS_CONFIG_ENABLED=true 时）提供非敏感覆盖与热重载
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration   # prod 不含 db/seed（已知口令绝不进生产 · ADR-0027）
+
+# 生产默认关闭 SpringDoc（不对外暴露 API 文档；内网需要时置 SPRINGDOC_ENABLED=true）
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}

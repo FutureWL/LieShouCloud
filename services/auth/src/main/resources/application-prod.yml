@@ -1,0 +1,12 @@
+# prod profile - 生产配置
+# JWT secret 必须由环境变量注入（.env.prod 的 JWT_SECRET），仓库内无默认（缺失即启动失败）
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
+# 生产默认关闭 SpringDoc（不对外暴露 API 文档；内网需要时置 SPRINGDOC_ENABLED=true）
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}

@@ -1,0 +1,5 @@
+# dev profile - 默认值已在 application.yml 中，这里仅放 dev 特定覆盖
+logging:
+  level:
+    cn.huntercat.lieshoucloudpro.auth: DEBUG
+    io.jsonwebtoken: DEBUG

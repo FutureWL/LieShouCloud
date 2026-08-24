@@ -1,0 +1,38 @@
+name: "Infra / Ops"
+description: 基础设施 / 部署 / 监控 / CI 变更（PROJECT_MANAGEMENT.md §5）
+title: "ops: "
+labels: [infra]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Infra 模板（PROJECT_MANAGEMENT.md §5）
+        生产/CI 变更前先改文档再动（OPERATIONS.md §0 原则 1）。
+  - type: textarea
+    id: trigger
+    attributes:
+      label: 触发原因
+      description: 为什么需要动基础设施
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响面
+      description: 哪些环境/服务受影响、是否停机、回滚方案
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: 决策方案
+      description: 具体方案 + 步骤
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options: [P0, P1, P2]
+    validations:
+      required: true

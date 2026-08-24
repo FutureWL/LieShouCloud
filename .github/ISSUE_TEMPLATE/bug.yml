@@ -1,0 +1,54 @@
+name: "Bug 报告"
+description: 缺陷反馈（PROJECT_MANAGEMENT.md §5）
+title: "fix: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug 模板（PROJECT_MANAGEMENT.md §5）
+        复现步骤越精确越好；截图/日志能省 reviewer 大量时间。
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 1. ... 2. ... 3. ...
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 观察到 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      validations:
+        required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      placeholder: 附错误信息 / 日志 / 截图
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境
+      description: 端（admin/desktop/mobile/mini）、浏览器、设备、profile
+      placeholder: admin · Chrome · dev
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / commit
+      placeholder: dev-xxxxxxx 或 v0.x.y
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options: [P0, P1, P2]
+    validations:
+      required: true

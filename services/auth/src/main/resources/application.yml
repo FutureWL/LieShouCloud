@@ -1,0 +1,122 @@
+spring:
+  config:
+    import:
+      - "optional:nacos:lieshoucloud-common.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+  application:
+    name: lieshoucloud-auth
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  cloud:
+    # Spring Boot 3.5.x 在 Spring Cloud 2023.0.5 release train 之外,
+    # 关掉兼容性检查器以允许启动 (项目明确锁 3.5.7, 详见 .ai/decisions/0001)
+    compatibility-verifier:
+      enabled: false
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+      config:
+        # Phase 9 · P1-5 Nacos Config（ADR-0029）
+        #   - 默认关闭（NACOS_CONFIG_ENABLED=false）→ 行为与接入前完全一致，启动零依赖
+        #   - 开启后加载 optional import（dataId 缺失不启动失败；refresh 支持热重载）
+        import-check:
+          enabled: false
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        file-extension: yml
+        refresh-enabled: true
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 5000
+            loggerLevel: BASIC
+
+server:
+  port: ${AUTH_PORT:8083}
+  servlet:
+    context-path: /
+
+# ============================================================
+# JWT 配置（Phase 5 闭环鉴权）
+#   - secret 必须 ≥ 32 字节（HS256 要求）
+#   - 生产环境由 .env / k8s Secret 注入，绝不入库
+# ============================================================
+app:
+  jwt:
+    secret: ${JWT_SECRET:please-change-me-in-production-min-32-bytes-12345}
+    access-ttl-seconds: ${JWT_ACCESS_TTL:1800}      # 30 min
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL:604800}  # 7 days
+    issuer: ${JWT_ISSUER:lieshoucloud-prod}
+
+# ============================================================
+# SpringDoc OpenAPI
+#   - /v3/api-docs/auth
+#   - /swagger-ui/auth/index.html (经 gateway)
+# ============================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  packages-to-scan: cn.huntercat.lieshoucloudpro.auth
+  show-actuator: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, env
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# ============================================================
+# Resilience4j RateLimiter（P1-4 · ADR-0028）
+#   保护公开端点（无 token 即可调用）：防密码暴力破解 / 验证码短信轰炸
+#   - timeoutDuration: 0 → 超出立即拒绝（RequestNotPermitted → 429），不排队
+#   - 限流按实例（每个 @RateLimiter(name) 独立计数器，单实例内存态）
+#   - 分布式限流（Redis / 网关 RequestRateLimiter）见 ADR-0028「后续」
+# ============================================================
+resilience4j:
+  ratelimiter:
+    configs:
+      default:
+        limitForPeriod: 30
+        limitRefreshPeriod: 1m
+        timeoutDuration: 0s
+    instances:
+      # 密码登录：10 次/分钟（含失败尝试）
+      authLogin:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1m
+        timeoutDuration: 0s
+      # 验证码发送：5 次/分钟（短信/邮箱轰炸防线；DB 层还有 60s 频率限制兜底）
+      authSendCode:
+        limitForPeriod: 5
+        limitRefreshPeriod: 1m
+        timeoutDuration: 0s
+      # 验证码登录 / 注册 / 重置密码：5 次/分钟
+      authCodeFlow:
+        limitForPeriod: 5
+        limitRefreshPeriod: 1m
+        timeoutDuration: 0s
+
+logging:
+  level:
+    root: INFO
+    cn.huntercat.lieshoucloudpro: DEBUG
+    io.jsonwebtoken: INFO

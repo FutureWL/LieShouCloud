@@ -1,0 +1,207 @@
+spring:
+  config:
+    import:
+      - "optional:nacos:lieshoucloud-common.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+  application:
+    name: lieshoucloud-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  cloud:
+    # Spring Boot 3.5.x 在 Spring Cloud 2023.0.5 release train 之外,
+    # 关掉兼容性检查器以允许启动 (项目明确锁 3.5.7, 详见 .ai/decisions/0001)
+    compatibility-verifier:
+      enabled: false
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+      config:
+        # Phase 9 · P1-5 Nacos Config（ADR-0029）
+        #   - 默认关闭（NACOS_CONFIG_ENABLED=false）→ 行为与接入前完全一致，启动零依赖
+        #   - 开启后加载 optional import（dataId 缺失不启动失败；refresh 支持热重载）
+        import-check:
+          enabled: false
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        file-extension: yml
+        refresh-enabled: true
+
+    # ============================================================
+    # Spring Cloud Gateway · 路由
+    #   /api/users/**         → lb://user-service
+    #   /api/admin/**         → lb://admin-service
+    #   /api/auth/**          → lb://auth-service  (Phase 5)
+    #   /v3/api-docs/{service} → lb://{service}    (Phase 5 OpenAPI 转发)
+    #   /swagger-ui/{service}/** → lb://{service}
+    # ============================================================
+    gateway:
+      # 不开自动 locator: 我们用显式 routes, 路径稳定且不依赖 Nacos 服务名
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        # ----- 业务路由 -----
+        - id: user-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/users/**
+        # Phase 8 多租户：租户管理（开通/停用/列表）→ user-service
+        - id: tenant-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/tenants/**
+        # Phase 8 RBAC：角色管理 → user-service
+        - id: role-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/roles/**
+        # Phase 9 审计日志：平台操作审计 → user-service（crm 的客户审计在 crm-service 内）
+        - id: audit-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/audit-logs/**
+        - id: admin-route
+          uri: lb://lieshoucloud-admin
+          predicates:
+            - Path=/api/admin/**
+        - id: auth-route
+          uri: lb://lieshoucloud-auth
+          predicates:
+            - Path=/api/auth/**
+        # ADR-0025：CRM 客户管理（首个租户内业务模块，强制 X-Tenant-Id）
+        - id: crm-route
+          uri: lb://lieshoucloud-crm
+          predicates:
+            - Path=/api/customers/**
+        # Phase 9：进销存（商品 + 出入库流水 · 强制 X-Tenant-Id）
+        - id: inventory-route
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/api/products/**
+        # Phase 9：财务记账（收支流水 + 汇总 · 强制 X-Tenant-Id）
+        - id: finance-route
+          uri: lb://lieshoucloud-finance
+          predicates:
+            - Path=/api/ledger/**
+        # ADR-0032：审批流（通用审批请求 · 强制 X-Tenant-Id）
+        - id: approval-route
+          uri: lb://lieshoucloud-approval
+          predicates:
+            - Path=/api/approvals/**
+
+        # ----- OpenAPI 文档转发 (Phase 5) -----
+        - id: openapi-user
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/v3/api-docs/user,/v3/api-docs/user/**
+          filters:
+            - RewritePath=/v3/api-docs/user(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-admin
+          uri: lb://lieshoucloud-admin
+          predicates:
+            - Path=/v3/api-docs/admin,/v3/api-docs/admin/**
+          filters:
+            - RewritePath=/v3/api-docs/admin(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-crm
+          uri: lb://lieshoucloud-crm
+          predicates:
+            - Path=/v3/api-docs/crm,/v3/api-docs/crm/**
+          filters:
+            - RewritePath=/v3/api-docs/crm(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-inventory
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/v3/api-docs/inventory,/v3/api-docs/inventory/**
+          filters:
+            - RewritePath=/v3/api-docs/inventory(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-finance
+          uri: lb://lieshoucloud-finance
+          predicates:
+            - Path=/v3/api-docs/finance,/v3/api-docs/finance/**
+          filters:
+            - RewritePath=/v3/api-docs/finance(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-approval
+          uri: lb://lieshoucloud-approval
+          predicates:
+            - Path=/v3/api-docs/approval,/v3/api-docs/approval/**
+          filters:
+            - RewritePath=/v3/api-docs/approval(?<segment>/.*),/v3/api-docs${segment}
+
+        # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
+        - id: swagger-ui-user
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/swagger-ui/user,/swagger-ui/user/**
+          filters:
+            - RewritePath=/swagger-ui/user(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-admin
+          uri: lb://lieshoucloud-admin
+          predicates:
+            - Path=/swagger-ui/admin,/swagger-ui/admin/**
+          filters:
+            - RewritePath=/swagger-ui/admin(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-crm
+          uri: lb://lieshoucloud-crm
+          predicates:
+            - Path=/swagger-ui/crm,/swagger-ui/crm/**
+          filters:
+            - RewritePath=/swagger-ui/crm(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-inventory
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/swagger-ui/inventory,/swagger-ui/inventory/**
+          filters:
+            - RewritePath=/swagger-ui/inventory(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-finance
+          uri: lb://lieshoucloud-finance
+          predicates:
+            - Path=/swagger-ui/finance,/swagger-ui/finance/**
+          filters:
+            - RewritePath=/swagger-ui/finance(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-approval
+          uri: lb://lieshoucloud-approval
+          predicates:
+            - Path=/swagger-ui/approval,/swagger-ui/approval/**
+          filters:
+            - RewritePath=/swagger-ui/approval(?<segment>/.*),/swagger-ui${segment}
+
+# ============================================================
+# 应用配置
+#   - JWT secret 与 auth-service 共签; 必须 ≥ 32 字节
+#   - CORS 白名单详见 .ai/SECURITY.md §5
+# ============================================================
+app:
+  jwt:
+    secret: ${JWT_SECRET:please-change-me-in-production-min-32-bytes-12345}
+    issuer: ${JWT_ISSUER:lieshoucloud-prod}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,X-Requested-With,X-User-Id,X-User-Name,X-User-Roles}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+server:
+  port: ${GATEWAY_PORT:9000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, env, gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO

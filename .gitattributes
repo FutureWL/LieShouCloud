@@ -1,0 +1,35 @@
+# ============================================================
+# .gitattributes
+# 标准化 EOL、防 binary 误改、配置 git diff / merge 行为。
+# ============================================================
+
+# —— 文本 + 显式 LF（除 Windows-only 文件） ——
+*                 text=auto eol=lf
+*.bat             text eol=crlf
+
+# —— 二进制：阻止 git diff 出二进制 noise / 不可读字符 ——
+*.png             binary
+*.jpg             binary
+*.jpeg            binary
+*.gif             binary
+*.webp            binary
+*.ico             binary
+*.pdf             binary
+*.zip             binary
+*.tar             binary
+*.gz              binary
+*.7z              binary
+*.jar             binary
+*.war             binary
+*.ear             binary
+*.class           binary
+*.o               binary
+*.so              binary
+*.dll             binary
+*.exe             binary
+*.so.*            binary
+
+# —— 已知长行（让 diff 报警而非吞行） ——
+services/**/src/main/resources/**/*.yml      diff=yml
+frontend/**/*.{ts,tsx,js,jsx,json}            diff=javascript
+frontend/**/*.html                             diff=html

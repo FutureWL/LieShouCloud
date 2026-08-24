@@ -1,0 +1,83 @@
+name: Security
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  # ============================================================
+  # gitleaks：扫 git history 中的 secret / API key / 等
+  # ============================================================
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    # gitleaks-action 需要 pull-requests: read 才能拉 PR commits（默认 token 无此权限）
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # full history 模式：gitleaks 走 fetch-depth: 0 看所有 commits
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_HISTORY: true
+          # 已知的 false-positive path 写 .gitleaksignore 在仓库根
+          GITLEAKS_CONFIG_DIR: .
+
+  # ============================================================
+  # 前端依赖漏洞扫描
+  # ============================================================
+  pnpm-audit:
+    name: pnpm audit (frontend deps)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      # prod-only 依赖扫描；--audit-level=high 只 fail 在 high/critical
+      - name: pnpm audit (production deps only, high+ severity)
+        run: pnpm audit --prod --audit-level=high
+
+  # ============================================================
+  # 后端依赖漏洞扫描（占位，等 Phase 6 引入 OWASP Dependency-Check）
+  # ============================================================
+  backend-deps-scan:
+    name: Backend deps scan (placeholder, Phase 6)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: Phase 6 加 com.github.segator:dependency-check-maven 插件
+      # 或在 .github/workflows 用 OWASP/dependency-check-action
+      # 现阶段保留占位 job 让 pipeline 结构稳定。
+      - name: Placeholder
+        run: echo "Backend deps scan placeholder — see .ai/SECURITY.md §8 + Phase 6"

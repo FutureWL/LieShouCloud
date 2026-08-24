@@ -1,0 +1,15 @@
+# docker profile - 容器内运行时使用
+# DB host=postgres (compose service name); 用户名/密码/库名由 .env 注入
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${POSTGRES_DB:lieshoucloudpro}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  # 种子数据（ADR-0027）：docker profile 额外启用 classpath:db/seed（如 R__seed_admin）
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+
+logging:
+  level:
+    cn.huntercat.lieshoucloudpro.user: DEBUG

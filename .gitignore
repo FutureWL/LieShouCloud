@@ -1,0 +1,42 @@
+# ============================================================
+# Top-level .gitignore (monorepo)
+# Per-package .gitignore in apps/admin/.gitignore etc.
+# ============================================================
+
+# ===== Monorepo noise =====
+.turbo/
+node_modules/
+**/dist/
+**/build/
+.pnpm-store/
+**/.swc/
+
+# ===== CodeGraph index =====
+.codegraph/
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== OS / IDE =====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.iml
+
+# ===== Secrets (never commit) =====
+.env
+.env.*
+!.env.example
+
+# ===== Coverage =====
+**/coverage/
+.nyc_output/
+
+# ===== Maven / Java (services/) =====
+# 已在 backend/.gitignore 之前；现在 services/ 同理
+target/
+**/target/

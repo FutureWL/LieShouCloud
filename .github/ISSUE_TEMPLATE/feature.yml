@@ -1,0 +1,50 @@
+name: "Feature 需求"
+description: 新功能或增强（PROJECT_MANAGEMENT.md §5）
+title: "feat: "
+labels: [feature]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature 模板（PROJECT_MANAGEMENT.md §5）
+        开发前先对齐：验收标准要可测试、估时要小时数。
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 动机
+      description: 为什么做？解决什么问题 / 哪个用户场景
+      placeholder: 客户在 ... 场景下需要 ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可测试的验收标准（Given/When/Then 或清单）
+      placeholder: |
+        - [ ] 登录后可见 ...
+        - [ ] 无权限时提示 ...
+    validations:
+      required: true
+  - type: textarea
+    id: modules
+    attributes:
+      label: 涉及模块
+      description: 后端服务 / 前端端 / 数据库迁移 / 文档
+      placeholder: services/user, apps/admin, Flyway Vx
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: 估时（小时）
+      placeholder: "4"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options: [P0, P1, P2]
+    validations:
+      required: true

@@ -1,0 +1,21 @@
+# CODEOWNERS —— 自动指派 reviewer（PROJECT_MANAGEMENT.md §4.3）
+# 规则：匹配最长路径优先；无匹配 → 默认 owner 魏来（Tech Lead 主审）
+# 同事 A/B 名字确定后取消注释并替换（见 PROJECT_MANAGEMENT.md §1）
+
+* @FutureWL
+
+# 前端四端 + 共享包 → 同事A（前端工程师，待定）
+# /apps/admin/ @future-collab-a
+# /apps/desktop/ @future-collab-a
+# /apps/mobile/ @future-collab-a
+# /apps/mini-program/ @future-collab-a
+# /packages/ui/ @future-collab-a
+
+# 后端微服务 → 同事B（后端工程师，待定）
+# /services/ @future-collab-b
+
+# CI / 部署 / 脚本 → 魏来（DevOps）
+/.github/workflows/ @FutureWL
+/scripts/ @FutureWL
+/deploy/ @FutureWL
+/docker/ @FutureWL

@@ -1,0 +1,43 @@
+name: "Decision (RFC)"
+description: 架构 / 方案决策，产出 ADR（PROJECT_MANAGEMENT.md §5）
+title: "decision: "
+labels: [decision]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Decision 模板（PROJECT_MANAGEMENT.md §5）
+        决策落地：先对齐 → 通过后写 `.ai/decisions/00XX-*.md` ADR。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: 上下文 / 问题定义
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: 选项
+      description: 候选方案 A / B / C + 各自权衡
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: 推荐方案
+      description: 选哪个 + 理由
+    validations:
+      required: true
+  - type: textarea
+    id: rejected
+    attributes:
+      label: 不推荐的理由
+      description: 明确记录被否掉的选项为什么不行
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options: [P0, P1, P2]
+    validations:
+      required: true

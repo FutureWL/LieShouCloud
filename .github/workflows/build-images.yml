@@ -1,0 +1,72 @@
+name: Build & Push Images
+
+# 镜像发布流水线（OPERATIONS.md §2 / §5 · ADR-0029 部署流水线 + ADR-0033 分支方法论）
+# 触发:
+#   - push dev       → tag: dev-<sha>（开发主线集成，供开发机 / 未来 staging）
+#   - push tag v*    → tag: <tag>-<sha>（正式发版，可追溯；生产只从 tag 部署）
+#   - main 不再触发镜像构建（生产只从 v* tag 部署）
+# 产物: ghcr.io/<owner>/lieshoucloud-<service>:<tag>
+# 后续（待真实 staging 服务器后接通）: 本 workflow 成功后触发 staging 自动部署
+
+on:
+  push:
+    branches: [dev]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-push:
+    name: Build & push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, user, admin, auth, approval]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHA=${GITHUB_SHA::7}
+          # GHCR 要求全小写 namespace（FutureWL → futurewl），docker tag 不允许大写
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}-${SHA}"
+          else
+            TAG="dev-${SHA}"
+          fi
+          echo "owner=${OWNER}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: services
+          file: services/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.tag.outputs.owner }}/lieshoucloud-${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha,scope=lieshoucloud-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=lieshoucloud-${{ matrix.service }}
+
+      - name: Image digest
+        run: |
+          echo "✅ pushed: ghcr.io/${{ steps.tag.outputs.owner }}/lieshoucloud-${{ matrix.service }}:${{ steps.tag.outputs.tag }}"

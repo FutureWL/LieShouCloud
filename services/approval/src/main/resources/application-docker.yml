@@ -1,0 +1,7 @@
+# docker compose 环境（容器内 datasource 走 service name）
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:5432/${POSTGRES_DB:lieshoucloudpro}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver

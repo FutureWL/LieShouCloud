@@ -1,0 +1,230 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+# 单个 job 失败不要影响另一个
+jobs:
+  # ============================================================
+  # 后端编译 + 单测（mvn verify 跑 test）+ spotless 自动 check
+  # ============================================================
+  backend-services:
+    name: Backend (Java 21 + Maven multi-module)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lieshoucloudpro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SPRING_PROFILES_ACTIVE: ci
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/lieshoucloudpro
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Install Maven 3.9.9
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: "3.9.9"
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('services/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Verify backend services (mvn verify → spotless:check + maven-surefire + jacoco)
+        working-directory: services
+        run: mvn -B -ntp -DskipITs verify
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: services/**/target/site/jacoco/index.html
+          if-no-files-found: ignore
+
+  # ============================================================
+  # 前端 (monorepo Phase 4)：turbo run，按 package 串行/并行
+  # 四端：admin + desktop + mobile + mini-program（typecheck + build）
+  # ============================================================
+  frontend:
+    name: Frontend monorepo (Turbo)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: Type check (turbo, all four clients)
+        run: pnpm turbo run typecheck --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+
+      - name: Build (turbo, all four clients)
+        run: pnpm turbo run build --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+
+  # ============================================================
+  # 前端 lint：ESLint + Prettier check（apps/admin + shared packages）
+  # ============================================================
+  frontend-lint:
+    name: Frontend monorepo lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: ESLint + Prettier via turbo
+        run: pnpm turbo run lint format:check
+
+  # ============================================================
+  # 前端测试：Vitest + Jest（四端）
+  # ============================================================
+  frontend-test:
+    name: Frontend monorepo test (all clients)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: Tests (turbo, all four clients)
+        run: pnpm turbo run test --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+        env:
+          CI: true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: apps/admin/coverage/
+          if-no-files-found: ignore
+
+  # ============================================================
+  # 前端 secrets 扫描
+  # ============================================================
+  security:
+    name: Security (gitleaks + pnpm audit)
+    runs-on: ubuntu-latest
+    # gitleaks-action 需要 pull-requests: read 才能拉 PR commits（默认 token 无此权限）
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_HISTORY: true
+          GITLEAKS_CONFIG_DIR: .
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      # monorepo 全 node deps 扫描
+      - name: pnpm audit (production deps only, high+ severity)
+        run: pnpm audit --prod --audit-level=high

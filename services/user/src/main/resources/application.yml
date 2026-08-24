@@ -1,0 +1,87 @@
+spring:
+  config:
+    import:
+      - "optional:nacos:lieshoucloud-common.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+  application:
+    name: lieshoucloud-user
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    hibernate:
+      # Phase 6 起 schema 由 Flyway 管理（见 ADR-0021），Hibernate 只做 validate
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  cloud:
+    # Spring Boot 3.5.x 在 Spring Cloud 2023.0.5 release train 之外,
+    # 关掉兼容性检查器以允许启动 (项目明确锁 3.5.7, 详见 .ai/decisions/0001)
+    compatibility-verifier:
+      enabled: false
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+      config:
+        # Phase 9 · P1-5 Nacos Config（ADR-0029）
+        #   - 默认关闭（NACOS_CONFIG_ENABLED=false）→ 行为与接入前完全一致，启动零依赖
+        #   - 开启后加载 optional import（dataId 缺失不启动失败；refresh 支持热重载）
+        import-check:
+          enabled: false
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        file-extension: yml
+        refresh-enabled: true
+
+server:
+  port: ${USER_PORT:8081}
+  servlet:
+    context-path: /
+
+# ============================================================
+# SpringDoc OpenAPI (Phase 5)
+#  - /v3/api-docs         → JSON spec
+#  - /swagger-ui.html     → Swagger UI
+# 前端 openapi-typescript 通过 gateway:9000/v3/api-docs/user 拉
+# ============================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  packages-to-scan: cn.huntercat.lieshoucloudpro.user
+  show-actuator: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, env
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    cn.huntercat.lieshoucloudpro: DEBUG

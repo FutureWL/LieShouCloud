@@ -1,0 +1,5 @@
+# docker profile - auth 不直连 DB (走 Feign 调 user 验证账号), 这里只放日志级别
+logging:
+  level:
+    cn.huntercat.lieshoucloudpro.auth: DEBUG
+    io.jsonwebtoken: INFO

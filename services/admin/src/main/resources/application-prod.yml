@@ -1,0 +1,8 @@
+# prod profile - 生产配置
+
+# 生产默认关闭 SpringDoc（不对外暴露 API 文档；内网需要时置 SPRINGDOC_ENABLED=true）
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}

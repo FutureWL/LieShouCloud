@@ -1,0 +1,10 @@
+# 本地默认配置（独立运行时）；生产请用环境变量覆盖。
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:lieshoucloudpro}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  # 种子数据（ADR-0027）：dev profile 额外启用 classpath:db/seed（如 R__seed_admin）
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed

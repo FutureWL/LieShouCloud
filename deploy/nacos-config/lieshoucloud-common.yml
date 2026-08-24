@@ -1,0 +1,19 @@
+# ============================================================
+# lieshoucloud-common.yml · 全服务共享配置（Nacos Config · ADR-0029）
+# 发布: scripts/nacos-import-configs.sh
+#
+# 说明:
+#   - 本文件是「非敏感」覆盖层：环境变量（.env / .env.prod）优先级高于本文件
+#   - 修改内容后, 服务端 /actuator/refresh（POST, 需认证）或重启即可生效
+#   - 仅 NACOS_CONFIG_ENABLED=true 时生效（默认关闭）
+# ============================================================
+
+# 日志级别（热重载演示: 改这里 POST /actuator/refresh 即时生效）
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+
+# 各服务可覆盖的公共默认值（按需放开，勿放 secret）
+# app:
+#   region: cn-hangzhou

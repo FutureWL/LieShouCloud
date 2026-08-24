@@ -1,0 +1,105 @@
+spring:
+  config:
+    import:
+      - "optional:nacos:lieshoucloud-common.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yml?group=DEFAULT_GROUP&refreshEnabled=true"
+  application:
+    name: lieshoucloud-admin
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  cloud:
+    # Spring Boot 3.5.x 在 Spring Cloud 2023.0.5 release train 之外,
+    # 关掉兼容性检查器以允许启动 (项目明确锁 3.5.7, 详见 .ai/decisions/0001)
+    compatibility-verifier:
+      enabled: false
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+      config:
+        # Phase 9 · P1-5 Nacos Config（ADR-0029）
+        #   - 默认关闭（NACOS_CONFIG_ENABLED=false）→ 行为与接入前完全一致，启动零依赖
+        #   - 开启后加载 optional import（dataId 缺失不启动失败；refresh 支持热重载）
+        import-check:
+          enabled: false
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        file-extension: yml
+        refresh-enabled: true
+    openfeign:
+      circuitbreaker:
+        # 把 Feign 调用与 Resilience4j 熔断器桥接
+        enabled: true
+      compression:
+        request:
+          enabled: true
+        response:
+          enabled: true
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 5000
+            loggerLevel: BASIC
+
+server:
+  port: ${ADMIN_PORT:8082}
+  servlet:
+    context-path: /
+
+# ============================================================
+# SpringDoc OpenAPI (Phase 5)
+# ============================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  packages-to-scan: cn.huntercat.lieshoucloudpro.admin
+  show-actuator: false
+
+# ============================================================
+# Resilience4j circuit breaker 配置
+#   对应 @CircuitBreaker(name = "userService") 的实例
+# ============================================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        registerHealthIndicator: true      # 暴露到 actuator/health
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50           # 失败率 50% 触发 OPEN
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, env, circuitbreakers, circuitbreakerevents
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    cn.huntercat.lieshoucloudpro: DEBUG
+    io.github.resilience4j: INFO
