@@ -96,6 +96,11 @@ spring:
           uri: lb://lieshoucloud-approval
           predicates:
             - Path=/api/approvals/**
+        # core.file：文件服务（上传/下载/预览/回收站 · 强制 X-Tenant-Id）
+        - id: file-route
+          uri: lb://lieshoucloud-file
+          predicates:
+            - Path=/api/files/**
 
         # ----- OpenAPI 文档转发 (Phase 5) -----
         - id: openapi-user
@@ -134,6 +139,12 @@ spring:
             - Path=/v3/api-docs/approval,/v3/api-docs/approval/**
           filters:
             - RewritePath=/v3/api-docs/approval(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-file
+          uri: lb://lieshoucloud-file
+          predicates:
+            - Path=/v3/api-docs/file,/v3/api-docs/file/**
+          filters:
+            - RewritePath=/v3/api-docs/file(?<segment>/.*),/v3/api-docs${segment}
 
         # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
         - id: swagger-ui-user
@@ -172,6 +183,12 @@ spring:
             - Path=/swagger-ui/approval,/swagger-ui/approval/**
           filters:
             - RewritePath=/swagger-ui/approval(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-file
+          uri: lb://lieshoucloud-file
+          predicates:
+            - Path=/swagger-ui/file,/swagger-ui/file/**
+          filters:
+            - RewritePath=/swagger-ui/file(?<segment>/.*),/swagger-ui${segment}
 
 # ============================================================
 # 应用配置
