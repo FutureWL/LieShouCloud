@@ -115,6 +115,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         || path.startsWith("/api/users/auth/")
         // 租户自助开通（公开 · SaaS 增长路径 · issue #24）
         || path.startsWith("/api/tenants/register")
+        // 设备 HTTP 接入（ADR-0040 · X-Device-Secret 设备级认证，不经 JWT）
+        || path.startsWith("/api/devices/v1/")
         // Nacos 注册回调 (Spring Cloud 心跳/注册)
         || path.startsWith("/nacos/");
   }
