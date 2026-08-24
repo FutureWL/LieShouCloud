@@ -1,28 +1,33 @@
 package cn.huntercat.lieshoucloudpro.user.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog.Action;
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog.Outcome;
-import cn.huntercat.lieshoucloudpro.user.domain.AuditLogRepository;
+import cn.huntercat.lieshoucloudpro.user.feign.AuditClient;
+import cn.huntercat.lieshoucloudpro.user.feign.CreateAuditLogRequest;
 
 /**
- * 操作审计服务（DATA_SECURITY.md §7 · append-only）.
+ * 操作审计服务（DATA_SECURITY.md §7 · append-only · ADR-0030 Stage 2：上提 core.audit）.
  *
- * <p>record() 使用 {@code REQUIRES_NEW} 独立事务：即使业务事务回滚，审计也落库 （审计关注「发生了什么尝试」，不随业务成败回滚）。
+ * <p>写路径从本地 audit_logs 表改为 Feign → 统一审计服务（lieshoucloud-audit / audit_events 表）。任何失败 （audit 服务不可用 /
+ * 网络异常）一律降级日志，<b>绝不阻塞用户/租户/角色写操作主流程</b>；本地 V6 audit_logs 表保留为 历史归档（不再写入，也不经 UI 查询）。
  */
 @Service
 public class AuditService {
 
-  private final AuditLogRepository repo;
+  private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
-  public AuditService(AuditLogRepository repo) {
-    this.repo = repo;
+  private final AuditClient auditClient;
+
+  public AuditService(AuditClient auditClient) {
+    this.auditClient = auditClient;
   }
 
   /** 从请求提取来源 IP（X-Forwarded-For 优先，回退 remoteAddr）与 UA */
@@ -40,8 +45,7 @@ public class AuditService {
     return (ua == null || ua.isBlank()) ? null : (ua.length() > 255 ? ua.substring(0, 255) : ua);
   }
 
-  /** 记录一次操作（独立事务，业务回滚不影响审计） */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  /** 记录一次操作（Feign → core.audit · 失败降级日志，不影响业务） */
   public AuditLog record(
       Long tenantId,
       Long userId,
@@ -53,18 +57,25 @@ public class AuditService {
       String userAgent,
       Outcome outcome,
       String requestId) {
-    AuditLog log = new AuditLog();
-    log.setTenantId(tenantId);
-    log.setUserId(userId);
-    log.setAction(action);
-    log.setResourceType(resourceType);
-    log.setResourceId(resourceId);
-    log.setDetail(truncate(detail, 500));
-    log.setSourceIp(sourceIp);
-    log.setUserAgent(userAgent);
-    log.setOutcome(outcome);
-    log.setRequestId(requestId);
-    return repo.save(log);
+    CreateAuditLogRequest req =
+        new CreateAuditLogRequest(
+            userId,
+            action.name(),
+            resourceType,
+            resourceId,
+            truncate(detail, 500),
+            sourceIp,
+            userAgent,
+            outcome.name(),
+            requestId,
+            "user");
+    try {
+      auditClient.create(req, tenantId == null ? null : String.valueOf(tenantId));
+      return toDto(tenantId, req, outcome);
+    } catch (Exception e) {
+      log.warn("审计投递失败（不影响业务主流程）: action={} resource={}/{}", action, resourceType, resourceId, e);
+      return null;
+    }
   }
 
   /** 便捷：记录成功操作（作用域租户 = 请求租户；平台操作用操作者租户兜底） */
@@ -87,6 +98,21 @@ public class AuditService {
         userAgent(req),
         Outcome.SUCCESS,
         req.getHeader("X-Request-Id"));
+  }
+
+  private static AuditLog toDto(Long tenantId, CreateAuditLogRequest req, Outcome outcome) {
+    AuditLog log = new AuditLog();
+    log.setTenantId(tenantId);
+    log.setUserId(req.userId());
+    log.setAction(Action.valueOf(req.action()));
+    log.setResourceType(req.resourceType());
+    log.setResourceId(req.resourceId());
+    log.setDetail(req.detail());
+    log.setSourceIp(req.sourceIp());
+    log.setUserAgent(req.userAgent());
+    log.setOutcome(outcome);
+    log.setRequestId(req.requestId());
+    return log;
   }
 
   private static String truncate(String s, int max) {

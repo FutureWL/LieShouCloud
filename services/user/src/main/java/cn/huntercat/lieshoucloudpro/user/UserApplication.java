@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 @EntityScan(basePackages = "cn.huntercat.lieshoucloudpro.user.domain")
 @EnableJpaRepositories(basePackages = "cn.huntercat.lieshoucloudpro.user.domain")
 @EnableDiscoveryClient
+@EnableFeignClients(basePackages = "cn.huntercat.lieshoucloudpro.user.feign")
 @OpenAPIDefinition(
     info =
         @Info(

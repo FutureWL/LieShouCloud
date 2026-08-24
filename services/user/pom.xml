@@ -59,6 +59,16 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
+        <!-- Feign → core.audit 统一审计投递（Stage 2 · ADR-0030 上提） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
         <!-- Nacos Config（Phase 9 · P1-5 配置中心 · ADR-0029；默认关闭，见 application.yml） -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

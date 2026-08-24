@@ -63,9 +63,9 @@ spring:
           uri: lb://lieshoucloud-user
           predicates:
             - Path=/api/roles/**
-        # Phase 9 审计日志：平台操作审计 → user-service（crm 的客户审计在 crm-service 内）
+        # core.audit：统一操作审计（Stage 2 · 原 user-service 本地审计已上提 audit 服务）
         - id: audit-route
-          uri: lb://lieshoucloud-user
+          uri: lb://lieshoucloud-audit
           predicates:
             - Path=/api/audit-logs/**
         - id: admin-route
@@ -156,6 +156,12 @@ spring:
             - Path=/v3/api-docs/notify,/v3/api-docs/notify/**
           filters:
             - RewritePath=/v3/api-docs/notify(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-audit
+          uri: lb://lieshoucloud-audit
+          predicates:
+            - Path=/v3/api-docs/audit,/v3/api-docs/audit/**
+          filters:
+            - RewritePath=/v3/api-docs/audit(?<segment>/.*),/v3/api-docs${segment}
 
         # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
         - id: swagger-ui-user
@@ -206,6 +212,12 @@ spring:
             - Path=/swagger-ui/notify,/swagger-ui/notify/**
           filters:
             - RewritePath=/swagger-ui/notify(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-audit
+          uri: lb://lieshoucloud-audit
+          predicates:
+            - Path=/swagger-ui/audit,/swagger-ui/audit/**
+          filters:
+            - RewritePath=/swagger-ui/audit(?<segment>/.*),/swagger-ui${segment}
 
 # ============================================================
 # 应用配置

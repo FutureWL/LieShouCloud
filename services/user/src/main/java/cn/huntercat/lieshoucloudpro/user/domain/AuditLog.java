@@ -1,26 +1,15 @@
 package cn.huntercat.lieshoucloudpro.user.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
 /**
- * 操作审计日志（append-only · DATA_SECURITY.md §7）.
+ * 操作审计日志 DTO（append-only · DATA_SECURITY.md §7）.
  *
- * <p>六要素：who（userId）/ when（createdAt）/ what（action + resourceType + resourceId + detail）/
- * from（sourceIp + userAgent）/ outcome / requestId。只新增不修改不删除。
+ * <p>ADR-0030 Stage 2：写路径已上提 core.audit（audit_events 表），本类保留 Action/Outcome 枚举（控制器沿用）
+ * 与响应形状，不再映射本地表（V6 audit_logs 为历史归档）。六要素：who / when / what / from / outcome / requestId。
  */
-@Entity
-@Table(name = "audit_logs")
-@Schema(description = "Operation audit log (append-only)")
+@Schema(description = "Operation audit log DTO (append-only)")
 public class AuditLog {
 
   public enum Action {
@@ -38,47 +27,37 @@ public class AuditLog {
     ERROR
   }
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Schema(description = "Auto-assigned primary key", accessMode = Schema.AccessMode.READ_ONLY)
   private Long id;
 
-  @Column(name = "tenant_id")
   private Long tenantId;
 
-  @Column(name = "user_id")
   private Long userId;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 16)
   private Action action;
 
-  @Column(name = "resource_type", nullable = false, length = 32)
   private String resourceType;
 
-  @Column(name = "resource_id")
   private Long resourceId;
 
-  @Column(length = 500)
   private String detail;
 
-  @Column(name = "source_ip", length = 64)
   private String sourceIp;
 
-  @Column(name = "user_agent", length = 255)
   private String userAgent;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 16)
   private Outcome outcome = Outcome.SUCCESS;
 
-  @Column(name = "request_id", length = 64)
   private String requestId;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
   public Long getId() {
     return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
   }
 
   public Long getTenantId() {
