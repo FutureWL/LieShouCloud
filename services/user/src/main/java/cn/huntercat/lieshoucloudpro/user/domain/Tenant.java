@@ -40,6 +40,8 @@ public class Tenant {
     GENERIC,
     /** 法律行业版（律所/事务所） */
     LAYER,
+    /** LegalMind Unity 版（凌科安时联合定制 · 律师成长操作系统 · ADR-0036） */
+    LEGALMIND,
     /** 教育行业版（教育机构） */
     ZHIYE,
     /** 精密制造版（制造企业） */
@@ -79,7 +81,8 @@ public class Tenant {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 32)
   @Schema(
-      description = "Edition (industry/customer edition): GENERIC | LAYER | ZHIYE | JMZZ",
+      description =
+          "Edition (industry/customer edition): GENERIC | LAYER | LEGALMIND | ZHIYE | JMZZ",
       example = "GENERIC",
       requiredMode = Schema.RequiredMode.REQUIRED)
   private Edition edition = Edition.GENERIC;

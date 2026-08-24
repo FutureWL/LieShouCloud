@@ -35,7 +35,8 @@ public final class AuthDtos {
       @Schema(description = "Tenant code (tcode claim)", example = "huntercat") String tenantCode,
       @Schema(description = "Tenant display name", example = "南昌猎手猫数字科技有限公司") String tenantName,
       @Schema(
-              description = "Tenant edition: GENERIC | LAYER | ZHIYE | JMZZ (ADR-0035)",
+              description =
+                  "Tenant edition: GENERIC | LAYER | LEGALMIND | ZHIYE | JMZZ (ADR-0035/0036)",
               example = "GENERIC")
           String tenantEdition) {}
 
