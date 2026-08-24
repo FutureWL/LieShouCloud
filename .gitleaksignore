@@ -8,3 +8,7 @@
 test/fixtures/mock-*.key
 **/*.example
 **/.env.example
+
+# 测试专用假 JWT 密钥（HS256 长度校验，非真实凭据，明文值 test-secret-...）
+services/auth/src/test/.*/AuthApplicationTests.java
+services/auth/src/test/.*/AuthRateLimitTest.java

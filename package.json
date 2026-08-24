@@ -1,0 +1,34 @@
+{
+  "name": "lieshoucloud-monorepo",
+  "version": "0.0.1-SNAPSHOT",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "pnpm": ">=9.0.0 <10.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
+  },
+  "pnpm": {
+    "overrides": {
+      "swiper": "^12.1.2",
+      "path-to-regexp": "^8.4.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-5p2g-fcmc-qvqq",
+        "GHSA-w3rx-r6r6-pgpr"
+      ]
+    }
+  },
+  "devDependencies": {
+    "turbo": "2.3.3"
+  }
+}
