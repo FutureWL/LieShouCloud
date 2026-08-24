@@ -113,6 +113,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         || path.endsWith("/_health")
         // 服务间调用 (auth-service 调 user-service 拉鉴权视图)
         || path.startsWith("/api/users/auth/")
+        // 租户自助开通（公开 · SaaS 增长路径 · issue #24）
+        || path.startsWith("/api/tenants/register")
         // Nacos 注册回调 (Spring Cloud 心跳/注册)
         || path.startsWith("/nacos/");
   }
