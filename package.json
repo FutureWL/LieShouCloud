@@ -8,11 +8,11 @@
     "pnpm": ">=9.0.0 <10.0.0"
   },
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev --parallel --filter=!//",
+    "build": "turbo run build --filter=!//",
+    "lint": "turbo run lint --filter=!//",
+    "test": "turbo run test --filter=!//",
+    "typecheck": "turbo run typecheck --filter=!//",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },

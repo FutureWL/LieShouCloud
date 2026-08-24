@@ -20,7 +20,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: lieshoucloudpro
+          POSTGRES_DB: lieshoucloud
         ports:
           - 5432:5432
         options: >-
@@ -30,7 +30,7 @@ jobs:
           --health-retries 10
     env:
       SPRING_PROFILES_ACTIVE: ci
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/lieshoucloudpro
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/lieshoucloud
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
     steps:
@@ -100,11 +100,11 @@ jobs:
             pnpm install
           fi
 
-      - name: Type check (turbo, all four clients)
-        run: pnpm turbo run typecheck --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+      - name: Type check (turbo, shared packages)
+        run: pnpm typecheck
 
-      - name: Build (turbo, all four clients)
-        run: pnpm turbo run build --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+      - name: Build (turbo, shared packages)
+        run: pnpm build
 
   # ============================================================
   # 前端 lint：ESLint + Prettier check（apps/admin + shared packages）
@@ -137,7 +137,9 @@ jobs:
           fi
 
       - name: ESLint + Prettier via turbo
-        run: pnpm turbo run lint format:check
+        run: |
+          pnpm lint
+          pnpm format:check
 
   # ============================================================
   # 前端测试：Vitest + Jest（四端）
@@ -169,8 +171,8 @@ jobs:
             pnpm install
           fi
 
-      - name: Tests (turbo, all four clients)
-        run: pnpm turbo run test --filter=@lieshoucloud/admin --filter=@lieshoucloud/desktop --filter=@lieshoucloud/mobile --filter=@lieshoucloud/mini-program
+      - name: Tests (turbo, shared packages)
+        run: pnpm test
         env:
           CI: true
 
@@ -179,7 +181,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vitest-coverage
-          path: apps/admin/coverage/
+          path: packages/*/coverage/
           if-no-files-found: ignore
 
   # ============================================================
