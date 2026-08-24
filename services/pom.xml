@@ -6,10 +6,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cn.huntercat</groupId>
-    <artifactId>lieshoucloud-services</artifactId>
+    <artifactId>lieshoucloud-services-open</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>LieShouCloud · Services Parent</name>
+    <name>LieShouCloud Open · Services Parent</name>
     <description>LieShouCloud open-source core services parent</description>
 
     <modules>
