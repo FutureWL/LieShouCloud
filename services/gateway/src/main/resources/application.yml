@@ -101,6 +101,11 @@ spring:
           uri: lb://lieshoucloud-file
           predicates:
             - Path=/api/files/**
+        # core.notify：站内消息通知（投递/列表/未读角标/已读回执 · 强制 X-Tenant-Id）
+        - id: notify-route
+          uri: lb://lieshoucloud-notify
+          predicates:
+            - Path=/api/notifications/**
 
         # ----- OpenAPI 文档转发 (Phase 5) -----
         - id: openapi-user
@@ -145,6 +150,12 @@ spring:
             - Path=/v3/api-docs/file,/v3/api-docs/file/**
           filters:
             - RewritePath=/v3/api-docs/file(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-notify
+          uri: lb://lieshoucloud-notify
+          predicates:
+            - Path=/v3/api-docs/notify,/v3/api-docs/notify/**
+          filters:
+            - RewritePath=/v3/api-docs/notify(?<segment>/.*),/v3/api-docs${segment}
 
         # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
         - id: swagger-ui-user
@@ -189,6 +200,12 @@ spring:
             - Path=/swagger-ui/file,/swagger-ui/file/**
           filters:
             - RewritePath=/swagger-ui/file(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-notify
+          uri: lb://lieshoucloud-notify
+          predicates:
+            - Path=/swagger-ui/notify,/swagger-ui/notify/**
+          filters:
+            - RewritePath=/swagger-ui/notify(?<segment>/.*),/swagger-ui${segment}
 
 # ============================================================
 # 应用配置

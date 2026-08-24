@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequest;
+import cn.huntercat.lieshoucloudpro.approval.feign.NotifyClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
 import java.math.BigDecimal;
@@ -30,6 +31,7 @@ class ApprovalNotifierTest {
 
   @Mock private JavaMailSender mailSender;
   @Mock private UserQueryClient users;
+  @Mock private NotifyClient notifyClient;
 
   private ApprovalNotifier notifier;
 
@@ -40,7 +42,7 @@ class ApprovalNotifierTest {
 
   @BeforeEach
   void setUp() {
-    notifier = new ApprovalNotifier(Optional.of(mailSender), users);
+    notifier = new ApprovalNotifier(Optional.of(mailSender), users, notifyClient);
   }
 
   @Test
@@ -54,6 +56,35 @@ class ApprovalNotifierTest {
     notifier.notifyApprover(1L, r);
 
     verify(mailSender).send(any(SimpleMailMessage.class));
+    // 站内信并行投递（core.notify · 待办提醒）
+    verify(notifyClient)
+        .create(
+            org.mockito.ArgumentMatchers.argThat(
+                req ->
+                    req.recipientId() == 2L
+                        && "APPROVAL".equals(req.type())
+                        && "approval".equals(req.refType())
+                        && req.refId() == r.getId()),
+            org.mockito.ArgumentMatchers.eq("1"),
+            org.mockito.ArgumentMatchers.isNull());
+  }
+
+  @Test
+  @DisplayName("notify 服务不可用 → 站内信降级，邮件仍发，不抛异常")
+  void notifyDown_inAppDegradesGracefully() {
+    org.mockito.Mockito.doThrow(new RuntimeException("notify service down"))
+        .when(notifyClient)
+        .create(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any());
+    when(users.getUserById(2L, "1"))
+        .thenReturn(
+            new UserView(2L, "bob", "Bob", "bob@huntercat.cn", "ACTIVE", List.of("TENANT_ADMIN")));
+    ApprovalRequest r = request(1L, 2L);
+
+    assertDoesNotThrow(() -> notifier.notifyApprover(1L, r));
+    verify(mailSender).send(any(SimpleMailMessage.class)); // 邮件通道不受站内信失败影响
   }
 
   @Test
@@ -108,7 +139,7 @@ class ApprovalNotifierTest {
   @Test
   @DisplayName("SMTP 未配置（mailSender 空）→ 旁路，不发信")
   void noMailSender_bypasses() {
-    notifier = new ApprovalNotifier(Optional.empty(), users);
+    notifier = new ApprovalNotifier(Optional.empty(), users, notifyClient);
     when(users.getUserById(1L, "1"))
         .thenReturn(
             new UserView(1L, "alice", "Alice", "alice@huntercat.cn", "ACTIVE", List.of("USER")));
