@@ -123,8 +123,9 @@ class ApprovalControllerTest extends PostgresTestSupport {
     when(userClient.listTenantUsers("1"))
         .thenReturn(
             List.of(
-                new UserView(5L, "staff", "员工", "ACTIVE", List.of("USER")),
-                new UserView(7L, "boss", "管理员", "ACTIVE", List.of("TENANT_ADMIN"))));
+                new UserView(5L, "staff", "员工", "staff@huntercat.cn", "ACTIVE", List.of("USER")),
+                new UserView(
+                    7L, "boss", "管理员", "boss@huntercat.cn", "ACTIVE", List.of("TENANT_ADMIN"))));
     mockMvc
         .perform(
             post("/api/approvals")
@@ -140,7 +141,9 @@ class ApprovalControllerTest extends PostgresTestSupport {
   void create_withoutApprover_autoResolvesFallbackToAnyUser() throws Exception {
     // 租户无管理员 → 退到任意用户
     when(userClient.listTenantUsers("1"))
-        .thenReturn(List.of(new UserView(3L, "alice", "爱丽丝", "ACTIVE", List.of("USER"))));
+        .thenReturn(
+            List.of(
+                new UserView(3L, "alice", "爱丽丝", "alice@huntercat.cn", "ACTIVE", List.of("USER"))));
     mockMvc
         .perform(
             post("/api/approvals")

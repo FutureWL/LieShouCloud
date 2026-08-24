@@ -24,6 +24,7 @@ import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequestRepository;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
 import cn.huntercat.lieshoucloudpro.approval.service.ApprovalAuditService;
+import cn.huntercat.lieshoucloudpro.approval.service.ApprovalNotifier;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -48,16 +49,19 @@ public class ApprovalController {
   private final ApprovalAuditLogRepository auditRepo;
   private final ApprovalAuditService auditService;
   private final UserQueryClient userClient;
+  private final ApprovalNotifier notifier;
 
   public ApprovalController(
       ApprovalRequestRepository repo,
       ApprovalAuditLogRepository auditRepo,
       ApprovalAuditService auditService,
-      UserQueryClient userClient) {
+      UserQueryClient userClient,
+      ApprovalNotifier notifier) {
     this.repo = repo;
     this.auditRepo = auditRepo;
     this.auditService = auditService;
     this.userClient = userClient;
+    this.notifier = notifier;
   }
 
   @Operation(summary = "List approval requests (tenant-scoped)")
@@ -174,6 +178,7 @@ public class ApprovalController {
         clientIp(req),
         userAgent(req),
         req.getHeader("X-Request-Id"));
+    notifier.notifyApprover(tid, saved); // 异步邮件，失败降级不阻塞
     return ResponseEntity.ok(saved);
   }
 
@@ -225,6 +230,7 @@ public class ApprovalController {
         clientIp(req),
         userAgent(req),
         req.getHeader("X-Request-Id"));
+    notifier.notifyRequester(tid, saved, "通过");
     return ResponseEntity.ok(saved);
   }
 
@@ -261,6 +267,7 @@ public class ApprovalController {
         clientIp(req),
         userAgent(req),
         req.getHeader("X-Request-Id"));
+    notifier.notifyRequester(tid, saved, "驳回");
     return ResponseEntity.ok(saved);
   }
 

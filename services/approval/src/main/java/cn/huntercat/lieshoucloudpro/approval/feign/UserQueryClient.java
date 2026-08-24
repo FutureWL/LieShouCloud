@@ -20,4 +20,10 @@ public interface UserQueryClient {
   @GetMapping
   List<UserView> listTenantUsers(
       @RequestHeader(value = "X-Tenant-Id", required = false) String tenantId);
+
+  /** 单个用户（通知收件人邮箱用 · 返回 User 实体 JSON，passwordHash WRITE_ONLY 不泄露） */
+  @GetMapping("/{id}")
+  UserView getUserById(
+      @org.springframework.web.bind.annotation.PathVariable Long id,
+      @RequestHeader(value = "X-Tenant-Id", required = false) String tenantId);
 }

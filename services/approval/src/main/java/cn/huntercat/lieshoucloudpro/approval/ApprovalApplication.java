@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
@@ -25,6 +26,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 @EnableJpaRepositories(basePackages = "cn.huntercat.lieshoucloudpro.approval.domain")
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "cn.huntercat.lieshoucloudpro.approval.feign")
+@EnableAsync // 审批邮件通知异步发送（不阻塞审批主流程 · ADR-0032）
 @OpenAPIDefinition(
     info =
         @Info(
