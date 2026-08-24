@@ -101,6 +101,16 @@ spring:
           uri: lb://lieshoucloud-file
           predicates:
             - Path=/api/files/**
+        # ADR-0040：物联网行业版（产品模型/设备管理/规则引擎 · 强制 X-Tenant-Id）
+        - id: iot-route
+          uri: lb://lieshoucloud-iot
+          predicates:
+            - Path=/api/iot/**
+        # ADR-0040：设备 HTTP 接入（X-Device-Secret 设备级认证，走网关白名单）
+        - id: device-http-route
+          uri: lb://lieshoucloud-device-gateway
+          predicates:
+            - Path=/api/devices/v1/**
 
         # ----- OpenAPI 文档转发 (Phase 5) -----
         - id: openapi-user
@@ -145,6 +155,18 @@ spring:
             - Path=/v3/api-docs/file,/v3/api-docs/file/**
           filters:
             - RewritePath=/v3/api-docs/file(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-iot
+          uri: lb://lieshoucloud-iot
+          predicates:
+            - Path=/v3/api-docs/iot,/v3/api-docs/iot/**
+          filters:
+            - RewritePath=/v3/api-docs/iot(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-device-gateway
+          uri: lb://lieshoucloud-device-gateway
+          predicates:
+            - Path=/v3/api-docs/device-gateway,/v3/api-docs/device-gateway/**
+          filters:
+            - RewritePath=/v3/api-docs/device-gateway(?<segment>/.*),/v3/api-docs${segment}
 
         # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
         - id: swagger-ui-user
@@ -189,6 +211,18 @@ spring:
             - Path=/swagger-ui/file,/swagger-ui/file/**
           filters:
             - RewritePath=/swagger-ui/file(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-iot
+          uri: lb://lieshoucloud-iot
+          predicates:
+            - Path=/swagger-ui/iot,/swagger-ui/iot/**
+          filters:
+            - RewritePath=/swagger-ui/iot(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-device-gateway
+          uri: lb://lieshoucloud-device-gateway
+          predicates:
+            - Path=/swagger-ui/device-gateway,/swagger-ui/device-gateway/**
+          filters:
+            - RewritePath=/swagger-ui/device-gateway(?<segment>/.*),/swagger-ui${segment}
 
 # ============================================================
 # 应用配置
