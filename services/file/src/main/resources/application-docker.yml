@@ -1,0 +1,12 @@
+# docker profile - 容器内运行时使用
+# DB host=postgres (compose service name); 存储目录 /data/files（volume 挂载）
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${POSTGRES_DB:lieshoucloudpro}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    cn.huntercat.lieshoucloudpro.file: DEBUG
