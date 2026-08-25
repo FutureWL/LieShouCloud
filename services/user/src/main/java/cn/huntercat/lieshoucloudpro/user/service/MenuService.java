@@ -107,7 +107,9 @@ public class MenuService {
               "legal:use",
               100,
               List.of(
-                  new MenuNode("legal-cases", "/legal/cases", "办案列表", "solution", "legal:use", 10, List.of()))),
+                  new MenuNode("legal-cases", "/legal/cases", "办案列表", "solution", "legal:use", 10, List.of()),
+                  new MenuNode(
+                      "legal-knowledge", "/legal/knowledge", "知识资产", "bulb", "legal:use", 20, List.of()))),
           new MenuNode(
               "iot",
               "/iot",
