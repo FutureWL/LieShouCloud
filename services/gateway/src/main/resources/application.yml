@@ -101,6 +101,11 @@ spring:
           uri: lb://lieshoucloud-edu
           predicates:
             - Path=/api/teachers/**,/api/dispatches/**,/api/supplies/**,/api/consumptions/**,/api/settlements/**
+        # ADR-0036：法律行业能力域（案件 + 办案时间线 · 强制 X-Tenant-Id）
+        - id: legal-route
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/api/legal/**
         # core.file：文件服务（上传/下载/预览/回收站 · 强制 X-Tenant-Id）
         - id: file-route
           uri: lb://lieshoucloud-file
@@ -126,6 +131,12 @@ spring:
             - Path=/v3/api-docs/crm,/v3/api-docs/crm/**
           filters:
             - RewritePath=/v3/api-docs/crm(?<segment>/.*),/v3/api-docs${segment}
+        - id: openapi-legal
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/v3/api-docs/legal,/v3/api-docs/legal/**
+          filters:
+            - RewritePath=/v3/api-docs/legal(?<segment>/.*),/v3/api-docs${segment}
         - id: openapi-inventory
           uri: lb://lieshoucloud-inventory
           predicates:
@@ -176,6 +187,12 @@ spring:
             - Path=/swagger-ui/crm,/swagger-ui/crm/**
           filters:
             - RewritePath=/swagger-ui/crm(?<segment>/.*),/swagger-ui${segment}
+        - id: swagger-ui-legal
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/swagger-ui/legal,/swagger-ui/legal/**
+          filters:
+            - RewritePath=/swagger-ui/legal(?<segment>/.*),/swagger-ui${segment}
         - id: swagger-ui-inventory
           uri: lb://lieshoucloud-inventory
           predicates:
