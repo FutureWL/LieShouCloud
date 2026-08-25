@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# ============================================================
+# pre-push 钩子 —— 防止直推 main / dev（ADR-0033 分支方法论 · 本地兜底）
+#
+# 背景：GitHub Pro 已开通（2026-08-25），服务端分支保护已启用（dev/main：必 PR + ≥1 reviewer + CI 必绿 + 禁直推，含管理员）。
+#   本钩子保留为本地双保险，机制与服务端规则一致。
+#
+# 安装：scripts/install-git-hooks.sh（git config core.hooksPath）
+# ============================================================
+set -euo pipefail
+
+PROTECTED_MAIN="refs/heads/main"
+PROTECTED_DEV="refs/heads/dev"
+
+# 输入：<local ref> <local sha> <remote ref> <remote sha>（每行一个推送目标）
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    "$PROTECTED_MAIN")
+      echo "⛔ 禁止直推 $PROTECTED_MAIN（ADR-0033 分支方法论）"
+      echo "   main = 生产分支，只能通过 PR 合入："
+      echo "   - 发版:   git checkout dev -b release/vX.Y.Z → PR release/vX.Y.Z → main → tag vX.Y.Z"
+      echo "   - 热修:   git checkout main -b hotfix/<slug>  → PR hotfix/<slug> → main → tag"
+      exit 1
+      ;;
+    "$PROTECTED_DEV")
+      echo "⛔ 禁止直推 $PROTECTED_DEV（ADR-0033 分支方法论）"
+      echo "   dev = 开发主线，只能通过 PR 合入："
+      echo "   - 功能:   git checkout dev -b feature/<slug> → PR → dev"
+      echo "   - 修复:   git checkout dev -b fix/<slug>     → PR → dev"
+      echo "   - main→dev 同步: 开 PR（cherry-pick 回 dev）"
+      exit 1
+      ;;
+  esac
+done
+
+exit 0
