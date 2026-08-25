@@ -25,6 +25,7 @@ import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.User;
 import cn.huntercat.lieshoucloudpro.user.domain.UserRepository;
 import cn.huntercat.lieshoucloudpro.user.service.AuditService;
+import cn.huntercat.lieshoucloudpro.user.service.MenuService;
 import cn.huntercat.lieshoucloudpro.user.web.dto.UserAuthView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -53,6 +54,7 @@ public class UserController {
   private final TenantInviteRepository inviteRepo;
   private final RoleRepository roleRepo;
   private final PermissionRepository permissionRepo;
+  private final MenuService menuService;
   private final AuditService audit;
   private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -65,12 +67,14 @@ public class UserController {
       TenantInviteRepository inviteRepo,
       RoleRepository roleRepo,
       PermissionRepository permissionRepo,
+      MenuService menuService,
       AuditService audit) {
     this.repo = repo;
     this.tenantRepo = tenantRepo;
     this.inviteRepo = inviteRepo;
     this.roleRepo = roleRepo;
     this.permissionRepo = permissionRepo;
+    this.menuService = menuService;
     this.audit = audit;
   }
 
@@ -362,6 +366,39 @@ public class UserController {
     return repo.findByUsername(username)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  /**
+   * Phase 11（ADR-0024 P2 阶段 4）: 菜单数据驱动 —— 当前用户可见菜单树.
+   *
+   * <p>默认清单 ⊕ 租户覆盖（tenant_menu_configs）⊕ 权限过滤（X-User-Permissions）→ 排序树。
+   * 由 gateway 经 JWT 鉴权后透传 X-Tenant-Id / X-User-Permissions；租户不存在 → 404。
+   */
+  @Operation(summary = "Get current user menu tree (data-driven · ADR-0024 P2)")
+  @ApiResponse(responseCode = "200", description = "Menu tree (permission-filtered)")
+  @ApiResponse(responseCode = "404", description = "Tenant not found")
+  @GetMapping("/me/menus")
+  public ResponseEntity<?> myMenus(
+      @org.springframework.web.bind.annotation.RequestHeader(value = "X-Tenant-Id", required = false)
+          String tenantHeader,
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-User-Permissions",
+              required = false)
+          String permissionsHeader) {
+    Long tenantId = parseUserId(tenantHeader);
+    if (tenantId == null) {
+      return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+          .body(Map.of("error", "TENANT_CONTEXT_REQUIRED", "message", "缺少租户上下文（X-Tenant-Id）"));
+    }
+    Tenant tenant = tenantRepo.findById(tenantId).orElse(null);
+    if (tenant == null) {
+      return ResponseEntity.notFound().build();
+    }
+    List<String> permissions =
+        permissionsHeader == null || permissionsHeader.isBlank()
+            ? List.of()
+            : List.of(permissionsHeader.split(","));
+    return ResponseEntity.ok(menuService.buildMenus(tenantId, tenant.getEdition(), permissions));
   }
 
   /**
