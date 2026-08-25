@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
+import cn.huntercat.lieshoucloudpro.user.domain.Permission;
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Role;
 import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
@@ -50,6 +52,7 @@ public class UserController {
   private final TenantRepository tenantRepo;
   private final TenantInviteRepository inviteRepo;
   private final RoleRepository roleRepo;
+  private final PermissionRepository permissionRepo;
   private final AuditService audit;
   private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -61,11 +64,13 @@ public class UserController {
       TenantRepository tenantRepo,
       TenantInviteRepository inviteRepo,
       RoleRepository roleRepo,
+      PermissionRepository permissionRepo,
       AuditService audit) {
     this.repo = repo;
     this.tenantRepo = tenantRepo;
     this.inviteRepo = inviteRepo;
     this.roleRepo = roleRepo;
+    this.permissionRepo = permissionRepo;
     this.audit = audit;
   }
 
@@ -400,7 +405,8 @@ public class UserController {
                         u.getRoles() == null || u.getRoles().isEmpty()
                             ? List.of("USER")
                             : u.getRoles().stream().map(Role::getCode).toList(),
-                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name())))
+                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+                        permissionRepo.findCodesByUserId(u.getId()))))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
@@ -451,13 +457,14 @@ public class UserController {
     return roleRepo.findByCode(code).orElse(null);
   }
 
-  /** 组装 UserAuthView（含租户编码 + 角色 codes） */
+  /** 组装 UserAuthView（含租户编码 + 角色 codes + 权限 codes · ADR-0024 Phase 2） */
   private UserAuthView toAuthView(User u) {
     Tenant tenant = tenantRepo.findById(u.getTenantId()).orElse(null);
     java.util.List<String> roleCodes =
         u.getRoles() == null || u.getRoles().isEmpty()
             ? List.of("USER")
             : u.getRoles().stream().map(Role::getCode).toList();
+    java.util.List<String> permissionCodes = permissionRepo.findCodesByUserId(u.getId());
     return new UserAuthView(
         u.getId(),
         u.getTenantId(),
@@ -468,7 +475,8 @@ public class UserController {
         u.getDisplayName(),
         u.getPasswordHash(),
         roleCodes,
-        u.getStatus() == null ? "ACTIVE" : u.getStatus().name());
+        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+        permissionCodes);
   }
 
   /**

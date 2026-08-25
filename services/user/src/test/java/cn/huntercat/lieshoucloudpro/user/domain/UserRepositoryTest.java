@@ -38,11 +38,11 @@ class UserRepositoryTest extends PostgresTestSupport {
   }
 
   @Test
-  @DisplayName("Flyway V2 seed：存在默认租户 huntercat")
+  @DisplayName("Flyway seed：存在平台租户 jxlkas（V9 由 huntercat 更名 · ADR-0036）")
   void tenantSeed_exists() {
-    var tenant = tenantRepo.findByCode("huntercat");
+    var tenant = tenantRepo.findByCode("jxlkas");
     assertThat(tenant).isPresent();
-    assertThat(tenant.get().getName()).contains("猎手猫");
+    assertThat(tenant.get().getName()).contains("凌科安时");
   }
 
   @Test

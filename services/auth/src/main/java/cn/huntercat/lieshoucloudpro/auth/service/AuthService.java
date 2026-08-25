@@ -79,8 +79,11 @@ public class AuthService {
     }
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
+    List<String> permissions =
+        user.permissions() == null ? List.of() : user.permissions();
     String access =
-        jwt.generateAccessToken(user.id(), user.tenantId(), tenantCode, user.username(), roles);
+        jwt.generateAccessToken(
+            user.id(), user.tenantId(), tenantCode, user.username(), roles, permissions);
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
@@ -172,7 +175,8 @@ public class AuthService {
             tid == null ? 0L : tid.longValue(),
             tcode,
             req.username(),
-            List.of("USER")),
+            List.of("USER"),
+            List.of()),
         jwt.generateRefreshToken(uid.longValue(), req.username()),
         jwt.getAccessTtlSeconds(),
         "Bearer",
@@ -245,8 +249,10 @@ public class AuthService {
             : tenantCode;
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
+    List<String> permissions =
+        user.permissions() == null ? List.of() : user.permissions();
     String access =
-        jwt.generateAccessToken(user.id(), user.tenantId(), tcode, user.username(), roles);
+        jwt.generateAccessToken(user.id(), user.tenantId(), tcode, user.username(), roles, permissions);
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
@@ -283,7 +289,11 @@ public class AuthService {
     @SuppressWarnings("unchecked")
     List<String> roles = c.get("roles", List.class);
     if (roles == null) roles = List.of("USER");
-    String access = jwt.generateAccessToken(userId, tenantId, tenantCode, username, roles);
+    @SuppressWarnings("unchecked")
+    List<String> permissions = c.get("permissions", List.class);
+    if (permissions == null) permissions = List.of();
+    String access =
+        jwt.generateAccessToken(userId, tenantId, tenantCode, username, roles, permissions);
     // refresh 保持纯 JWT 校验：tenantName/tenantEdition 未知，置 null（前端刷新不覆盖租户信息）
     return new TokenResponse(
         access,
@@ -304,6 +314,7 @@ public class AuthService {
         "tenantId", claims.get("tid", Long.class),
         "tenantCode", claims.get("tcode", String.class),
         "username", claims.getSubject(),
-        "roles", claims.get("roles", List.class));
+        "roles", claims.get("roles", List.class),
+        "permissions", claims.get("permissions", List.class));
   }
 }
