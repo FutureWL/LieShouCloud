@@ -10,6 +10,9 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     locations: classpath:db/migration   # prod 不含 db/seed（已知口令绝不进生产 · ADR-0027）
+    # 同 docker profile：多服务共享 public schema 启动竞态下自动 baseline（见 application-docker.yml 注释）
+    baseline-on-migrate: true
+    baseline-version: 0
 
 # 生产默认关闭 SpringDoc（不对外暴露 API 文档；内网需要时置 SPRINGDOC_ENABLED=true）
 springdoc:
