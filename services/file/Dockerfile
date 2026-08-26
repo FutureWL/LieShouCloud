@@ -16,6 +16,10 @@ FROM eclipse-temurin:21-jre-alpine AS runtime
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
+# 文件存储 volume 挂载点（docker-compose file_uploads → /data/files），
+# 提前建好并归属 app 用户（容器以非 root 运行，volume 首挂为 root 属主会写不进）
+RUN mkdir -p /data/files && chown -R app:app /data/files
+
 COPY --from=builder /workspace/file/target/lieshoucloud-file.jar /app/app.jar
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Dfile.encoding=UTF-8"
