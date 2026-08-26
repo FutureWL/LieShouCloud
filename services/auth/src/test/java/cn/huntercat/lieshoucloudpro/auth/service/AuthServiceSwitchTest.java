@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-import cn.huntercat.lieshoucloudpro.auth.feign.TenantAccessClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.UserAuthClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.TenantAccessItem;
+import cn.huntercat.lieshoucloudpro.auth.port.TenantAccessPort;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.TokenResponse;
 import io.jsonwebtoken.Claims;
 import java.util.List;
@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * AuthService.switchTenant 集团版子公司切换测试（Phase 1 §3.2 统一账号）.
  *
- * <p>mock TenantAccessClient（不碰 user-service）：切换成功重签 token（tcode/roles 更新为目标租户）， 目标租户不可访问 →
+ * <p>mock TenantAccessPort（不碰 user-service）：切换成功重签 token（tcode/roles 更新为目标租户）， 目标租户不可访问 →
  * NO_ACCESS_TO_TENANT。
  */
 @SpringBootTest(
@@ -38,7 +38,7 @@ class AuthServiceSwitchTest {
 
   @Autowired private JwtService jwtService;
 
-  @MockitoBean private TenantAccessClient tenantAccessClient;
+  @MockitoBean private TenantAccessPort tenantAccessPort;
 
   @MockitoBean private UserAuthClient userAuthClient;
 
@@ -58,7 +58,7 @@ class AuthServiceSwitchTest {
   @Test
   @DisplayName("切换成功：重签 token 的 tenantCode/tenantName/roles 指向目标子公司")
   void switchTenant_success() {
-    when(tenantAccessClient.tenantAccess(10L, 10L)).thenReturn(ACCESS);
+    when(tenantAccessPort.tenantAccess(10L, 10L)).thenReturn(ACCESS);
 
     TokenResponse r = authService.switchTenant(10L, "hq-admin", "nanchang");
 
@@ -76,7 +76,7 @@ class AuthServiceSwitchTest {
   @Test
   @DisplayName("目标租户不可访问 → BadCredentialsException（NO_ACCESS_TO_TENANT）")
   void switchTenant_noAccess_rejected() {
-    when(tenantAccessClient.tenantAccess(10L, 10L)).thenReturn(ACCESS);
+    when(tenantAccessPort.tenantAccess(10L, 10L)).thenReturn(ACCESS);
 
     assertThrows(
         BadCredentialsException.class,
@@ -86,7 +86,7 @@ class AuthServiceSwitchTest {
   @Test
   @DisplayName("切回主属租户：tcode/roles 为主属租户上下文")
   void switchTenant_backToPrimary() {
-    when(tenantAccessClient.tenantAccess(10L, 10L)).thenReturn(ACCESS);
+    when(tenantAccessPort.tenantAccess(10L, 10L)).thenReturn(ACCESS);
 
     TokenResponse r = authService.switchTenant(10L, "hq-admin", "haizan");
 
