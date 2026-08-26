@@ -96,11 +96,11 @@ spring:
           uri: lb://lieshoucloud-approval
           predicates:
             - Path=/api/approvals/**
-        # zhiye 教育行业版：师资档案 + 师资派遣（智野 B2B2C 供应侧 · 强制 X-Tenant-Id）
+        # zhiye 教育行业版：师资档案 + 师资派遣 + 供应结算（智野 B2B2C 供应侧 · 强制 X-Tenant-Id）
         - id: edu-route
           uri: lb://lieshoucloud-edu
           predicates:
-            - Path=/api/teachers/**,/api/dispatches/**
+            - Path=/api/teachers/**,/api/dispatches/**,/api/supplies/**,/api/consumptions/**,/api/settlements/**
         # core.file：文件服务（上传/下载/预览/回收站 · 强制 X-Tenant-Id）
         - id: file-route
           uri: lb://lieshoucloud-file
