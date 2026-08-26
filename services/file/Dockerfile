@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# LieShouCloudPro · File Service (port 8099) multi-stage
+# LieShouCloudPro · File Service (port 8090) multi-stage
 # 文件服务（上传/下载/预览 · 强制 X-Tenant-Id · 本地磁盘存储）
 # docker build context = ../../services
 
@@ -21,9 +21,9 @@ COPY --from=builder /workspace/file/target/lieshoucloud-file.jar /app/app.jar
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Dfile.encoding=UTF-8"
 USER app
 
-EXPOSE 8099
+EXPOSE 8090
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD wget -qO- http://localhost:8099/actuator/health >/dev/null || exit 1
+    CMD wget -qO- http://localhost:8090/actuator/health >/dev/null || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

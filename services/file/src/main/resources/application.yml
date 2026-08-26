@@ -52,7 +52,7 @@ spring:
         refresh-enabled: true
 
 server:
-  port: ${FILE_PORT:8099}
+  port: ${FILE_PORT:8090}
   servlet:
     context-path: /
 
