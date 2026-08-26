@@ -106,7 +106,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     return Ordered.HIGHEST_PRECEDENCE + 10;
   }
 
-  private static boolean isWhitelist(String path) {
+  static boolean isWhitelist(String path) {
+    // 集团版子公司切换需鉴权（gateway 注入 X-User-Id/X-User-Roles，auth 校验目标租户授权）
+    if (path.equals("/api/auth/switch-tenant")) {
+      return false;
+    }
     return path.startsWith("/api/auth/")
         || path.startsWith("/v3/api-docs/")
         || path.startsWith("/swagger-ui/")
