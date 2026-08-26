@@ -18,6 +18,7 @@
         <module>admin</module>
         <module>auth</module>
         <module>approval</module>
+        <module>file</module>
     </modules>
 
     <properties>
@@ -36,7 +37,7 @@
         <jacoco.version>0.8.12</jacoco.version>
 
         <!-- ===== OpenAPI / SpringDoc（Phase 5 跨端契约） ===== -->
-        <springdoc.version>2.6.0</springdoc.version>
+        <springdoc.version>2.8.17</springdoc.version>
 
         <!-- ===== Spring Security / JWT（Phase 5 闭环鉴权） ===== -->
         <jjwt.version>0.12.6</jjwt.version>

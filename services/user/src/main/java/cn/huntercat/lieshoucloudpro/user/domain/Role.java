@@ -7,12 +7,17 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 角色实体（RBAC · ADR-0024）.
@@ -54,6 +59,11 @@ public class Role {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  /** 反向集合（mappedBy roles）：供权限查询 {@code Role.users} 使用；JSON 忽略避免循环。 */
+  @JsonIgnore
+  @ManyToMany(mappedBy = "roles")
+  private List<User> users = new ArrayList<>();
 
   public Role() {}
 
@@ -119,5 +129,13 @@ public class Role {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public List<User> getUsers() {
+    return users;
+  }
+
+  public void setUsers(List<User> users) {
+    this.users = users;
   }
 }

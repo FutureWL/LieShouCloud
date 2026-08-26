@@ -38,6 +38,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
   private static final String HDR_X_USER_ID = "X-User-Id";
   private static final String HDR_X_USER_NAME = "X-User-Name";
   private static final String HDR_X_USER_ROLES = "X-User-Roles";
+  private static final String HDR_X_USER_PERMISSIONS = "X-User-Permissions";
   private static final String HDR_X_TENANT_ID = "X-Tenant-Id";
   private static final String HDR_X_TENANT_CODE = "X-Tenant-Code";
 
@@ -80,8 +81,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     String username = claims.getSubject();
     @SuppressWarnings("unchecked")
     List<String> roles = claims.get("roles", List.class);
+    @SuppressWarnings("unchecked")
+    List<String> permissions = claims.get("permissions", List.class);
 
-    // 注入用户信息到请求头（让下游服务可直接读；Phase 8 含租户维度 ADR-0022）
+    // 注入用户信息到请求头（让下游服务可直接读；Phase 8 含租户维度 ADR-0022；权限码 ADR-0024 Phase 2）
     ServerHttpRequest mutated =
         exchange
             .getRequest()
@@ -89,6 +92,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             .header(HDR_X_USER_ID, uid == null ? "" : String.valueOf(uid))
             .header(HDR_X_USER_NAME, username == null ? "" : username)
             .header(HDR_X_USER_ROLES, roles == null ? "" : String.join(",", roles))
+            .header(
+                HDR_X_USER_PERMISSIONS, permissions == null ? "" : String.join(",", permissions))
             .header(HDR_X_TENANT_ID, tenantId == null ? "" : String.valueOf(tenantId))
             .header(HDR_X_TENANT_CODE, tenantCode == null ? "" : tenantCode)
             .build();
@@ -101,7 +106,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     return Ordered.HIGHEST_PRECEDENCE + 10;
   }
 
-  private static boolean isWhitelist(String path) {
+  static boolean isWhitelist(String path) {
+    // 集团版子公司切换需鉴权（gateway 注入 X-User-Id/X-User-Roles，auth 校验目标租户授权）
+    if (path.equals("/api/auth/switch-tenant")) {
+      return false;
+    }
     return path.startsWith("/api/auth/")
         || path.startsWith("/v3/api-docs/")
         || path.startsWith("/swagger-ui/")

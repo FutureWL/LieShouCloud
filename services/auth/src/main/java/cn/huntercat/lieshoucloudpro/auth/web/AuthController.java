@@ -23,6 +23,7 @@ import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.RefreshRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.RegisterRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.ResetPasswordRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.SendCodeRequest;
+import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.SwitchTenantRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.TokenResponse;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
@@ -64,6 +65,28 @@ public class AuthController {
   @RateLimiter(name = "authLogin")
   public TokenResponse login(@Valid @RequestBody LoginRequest req) {
     return authService.login(req);
+  }
+
+  @Operation(
+      summary = "Switch tenant context (集团版子公司切换)",
+      description = "验证当前用户在目标子公司租户有授权（主属或 user_tenant_grants），重签 tid/tcode/roles 的 token。")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Switched; new tokens returned"),
+    @ApiResponse(responseCode = "400", description = "NO_ACCESS_TO_TENANT")
+  })
+  @PostMapping("/switch-tenant")
+  public TokenResponse switchTenant(
+      @Valid @RequestBody SwitchTenantRequest req,
+      @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false)
+          Long userId,
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-User-Name",
+              required = false)
+          String username) {
+    if (userId == null) {
+      throw new BadCredentialsException("UNAUTHENTICATED");
+    }
+    return authService.switchTenant(userId, username == null ? "" : username, req.tenantCode());
   }
 
   // ============================================================

@@ -5,6 +5,12 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+<<<<<<< HEAD
+=======
+import cn.huntercat.lieshoucloudpro.auth.feign.TenantAccessClient;
+import cn.huntercat.lieshoucloudpro.auth.feign.UserAuthClient;
+import cn.huntercat.lieshoucloudpro.auth.feign.dto.TenantAccessItem;
+>>>>>>> origin/dev
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.UserAuthView;
 import cn.huntercat.lieshoucloudpro.auth.port.UserAuthPort;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginRequest;
@@ -30,12 +36,25 @@ public class AuthService {
   private static final String DEFAULT_TENANT_CODE = "huntercat";
 
   private final JwtService jwt;
+<<<<<<< HEAD
   private final UserAuthPort userClient;
   private final PasswordEncoder passwordEncoder;
 
   public AuthService(JwtService jwt, UserAuthPort userClient, PasswordEncoder passwordEncoder) {
+=======
+  private final UserAuthClient userClient;
+  private final TenantAccessClient tenantAccessClient;
+  private final PasswordEncoder passwordEncoder;
+
+  public AuthService(
+      JwtService jwt,
+      UserAuthClient userClient,
+      TenantAccessClient tenantAccessClient,
+      PasswordEncoder passwordEncoder) {
+>>>>>>> origin/dev
     this.jwt = jwt;
     this.userClient = userClient;
+    this.tenantAccessClient = tenantAccessClient;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -79,8 +98,10 @@ public class AuthService {
     }
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
+    List<String> permissions = user.permissions() == null ? List.of() : user.permissions();
     String access =
-        jwt.generateAccessToken(user.id(), user.tenantId(), tenantCode, user.username(), roles);
+        jwt.generateAccessToken(
+            user.id(), user.tenantId(), tenantCode, user.username(), roles, permissions);
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
@@ -102,6 +123,50 @@ public class AuthService {
     } catch (Exception ignored) {
       // 回写失败不阻断登录（user-service 暂不可达时降级）
     }
+  }
+
+  // ============================================================
+  // 可信身份登录（SECURE WORKSPACE · OAuth 通道）
+  // ============================================================
+
+  /**
+   * 组织成员核验（AUTH REQUIRED）：返回成员状态 ACTIVE / DISABLED / NOT_FOUND.
+   *
+   * <p>供 OAuth 授权前置校验：可信身份 provider 已完成身份验证后，核对组织成员资格与有效期。
+   */
+  public String verifyMember(String tenantCode, String username) {
+    String tcode = (tenantCode == null || tenantCode.isBlank()) ? DEFAULT_TENANT_CODE : tenantCode;
+    try {
+      UserAuthView u = userClient.findByTenantAndUsername(tcode, username);
+      if (u == null || u.id() == null) return "NOT_FOUND";
+      return u.status() == null ? "ACTIVE" : u.status();
+    } catch (Exception e) {
+      return "NOT_FOUND";
+    }
+  }
+
+  /**
+   * 可信身份登录（OAuth token 阶段）：按成员用户名签发 JWT（不校验密码—— 身份已由可信身份 provider 验证，密码通道不参与，符合「不保存密码」理念）。
+   *
+   * <p>仍执行组织成员核验：成员不存在 / 非 ACTIVE 拒绝签发。
+   */
+  public TokenResponse oauthLogin(String tenantCode, String username) {
+    String tcode = (tenantCode == null || tenantCode.isBlank()) ? DEFAULT_TENANT_CODE : tenantCode;
+    UserAuthView user;
+    try {
+      user = userClient.findByTenantAndUsername(tcode, username);
+    } catch (Exception e) {
+      throw new UsernameNotFoundException("USER_NOT_FOUND: " + username);
+    }
+    if (user == null || user.id() == null) {
+      // OAuth 通道不依赖密码（身份已由可信身份 provider 验证 · 不保存密码理念）
+      throw new UsernameNotFoundException("USER_NOT_FOUND: " + username);
+    }
+    String status = user.status() == null ? "ACTIVE" : user.status();
+    if (!"ACTIVE".equals(status)) {
+      throw new BadCredentialsException("ACCOUNT_" + status);
+    }
+    return issueTokens(user, tcode);
   }
 
   // ============================================================
@@ -172,7 +237,8 @@ public class AuthService {
             tid == null ? 0L : tid.longValue(),
             tcode,
             req.username(),
-            List.of("USER")),
+            List.of("USER"),
+            List.of()),
         jwt.generateRefreshToken(uid.longValue(), req.username()),
         jwt.getAccessTtlSeconds(),
         "Bearer",
@@ -237,6 +303,39 @@ public class AuthService {
     }
   }
 
+  /**
+   * 集团版子公司切换（Phase 1 §3.2 统一账号）：验证目标租户可访问后重签 token.
+   *
+   * <p>从 user-service {@code /api/tenant-access/user/{userId}} 拿可访问租户列表（主属 + 跨公司授权）， 目标租户不在列表 →
+   * {@link BadCredentialsException}（NO_ACCESS_TO_TENANT）。 切换后 JWT 的 tid/tcode/roles
+   * 更新为目标子公司租户上下文，各服务请求链自然按新租户处理。
+   */
+  public TokenResponse switchTenant(Long userId, String username, String tenantCode) {
+    List<TenantAccessItem> access = tenantAccessClient.tenantAccess(userId, userId);
+    TenantAccessItem target =
+        access.stream()
+            .filter(i -> i.tenantCode() != null && i.tenantCode().equals(tenantCode))
+            .findFirst()
+            .orElseThrow(() -> new BadCredentialsException("NO_ACCESS_TO_TENANT"));
+    List<String> roles =
+        target.roles() == null || target.roles().isEmpty() ? List.of("USER") : target.roles();
+    List<String> permissions = target.permissions() == null ? List.of() : target.permissions();
+    String accessToken =
+        jwt.generateAccessToken(
+            userId, target.tenantId(), target.tenantCode(), username, roles, permissions);
+    String refresh = jwt.generateRefreshToken(userId, username);
+    return new TokenResponse(
+        accessToken,
+        refresh,
+        jwt.getAccessTtlSeconds(),
+        "Bearer",
+        userId,
+        username,
+        target.tenantCode(),
+        target.tenantName(),
+        target.edition());
+  }
+
   /** 签发 access + refresh（含租户维度） */
   private TokenResponse issueTokens(UserAuthView user, String tenantCode) {
     String tcode =
@@ -245,8 +344,10 @@ public class AuthService {
             : tenantCode;
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
+    List<String> permissions = user.permissions() == null ? List.of() : user.permissions();
     String access =
-        jwt.generateAccessToken(user.id(), user.tenantId(), tcode, user.username(), roles);
+        jwt.generateAccessToken(
+            user.id(), user.tenantId(), tcode, user.username(), roles, permissions);
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(
@@ -283,7 +384,11 @@ public class AuthService {
     @SuppressWarnings("unchecked")
     List<String> roles = c.get("roles", List.class);
     if (roles == null) roles = List.of("USER");
-    String access = jwt.generateAccessToken(userId, tenantId, tenantCode, username, roles);
+    @SuppressWarnings("unchecked")
+    List<String> permissions = c.get("permissions", List.class);
+    if (permissions == null) permissions = List.of();
+    String access =
+        jwt.generateAccessToken(userId, tenantId, tenantCode, username, roles, permissions);
     // refresh 保持纯 JWT 校验：tenantName/tenantEdition 未知，置 null（前端刷新不覆盖租户信息）
     return new TokenResponse(
         access,
@@ -304,6 +409,7 @@ public class AuthService {
         "tenantId", claims.get("tid", Long.class),
         "tenantCode", claims.get("tcode", String.class),
         "username", claims.getSubject(),
-        "roles", claims.get("roles", List.class));
+        "roles", claims.get("roles", List.class),
+        "permissions", claims.get("permissions", List.class));
   }
 }

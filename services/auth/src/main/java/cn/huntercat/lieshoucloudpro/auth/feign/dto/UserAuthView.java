@@ -14,6 +14,8 @@ import java.util.List;
  * <p>Phase 8（ADR-0022）: 新增 {@code tenantId} / {@code tenantCode}，JWT 带租户维度.
  *
  * <p>Phase 10（ADR-0035）: 新增 {@code tenantName} / {@code tenantEdition}，登录时返回租户品牌/版别信息.
+ *
+ * <p>Phase 11（ADR-0024 Phase 2）: 新增 {@code permissions}，JWT 携带权限码（菜单可见性 + 接口鉴权共用数据源）.
  */
 public record UserAuthView(
     Long id,
@@ -25,4 +27,5 @@ public record UserAuthView(
     String displayName,
     String passwordHash,
     List<String> roles,
-    String status) {}
+    String status,
+    List<String> permissions) {}

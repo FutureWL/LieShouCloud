@@ -23,7 +23,9 @@ class JwtServiceTest {
 
   @Test
   void generateAccessToken_thenParse() {
-    String token = jwt.generateAccessToken(1L, 1L, "huntercat", "futurewl", List.of("USER"));
+    String token =
+        jwt.generateAccessToken(
+            1L, 1L, "huntercat", "futurewl", List.of("USER"), List.of("legal:use", "crm:use"));
     assertNotNull(token);
     assertTrue(jwt.validate(token));
 
@@ -33,6 +35,7 @@ class JwtServiceTest {
     assertEquals(1L, c.get("tid", Long.class));
     assertEquals("huntercat", c.get("tcode", String.class));
     assertEquals(List.of("USER"), c.get("roles", List.class));
+    assertEquals(List.of("legal:use", "crm:use"), c.get("permissions", List.class));
     assertEquals("access", c.get("typ"));
   }
 

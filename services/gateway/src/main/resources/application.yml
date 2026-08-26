@@ -63,6 +63,15 @@ spring:
           uri: lb://lieshoucloud-user
           predicates:
             - Path=/api/roles/**
+        # 集团版统一账号：跨公司授权 + 可访问租户上下文（Phase 1 §3.2）→ user-service
+        - id: tenant-grant-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/tenant-grants/**
+        - id: tenant-access-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/tenant-access/**
         # Phase 9 审计日志：平台操作审计 → user-service（crm 的客户审计在 crm-service 内）
         - id: audit-route
           uri: lb://lieshoucloud-user
@@ -80,12 +89,22 @@ spring:
         - id: crm-route
           uri: lb://lieshoucloud-crm
           predicates:
-            - Path=/api/customers/**,/api/leads/**,/api/letters/**,/api/responses/**,/api/customer-success/**,/api/letter-templates/**
+            - Path=/api/customers/**,/api/leads/**,/api/letters/**,/api/responses/**,/api/customer-success/**,/api/letter-templates/**,/api/contacts/**,/api/contracts/**,/api/members/**
         # Phase 9：进销存（商品 + 出入库流水 · 强制 X-Tenant-Id）
         - id: inventory-route
           uri: lb://lieshoucloud-inventory
           predicates:
             - Path=/api/products/**
+        # ADR-0037：质检追溯（批次 · 强制 X-Tenant-Id）
+        - id: batch-route
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/api/batches/**
+        # ADR-0037：质检追溯（质检记录 · 强制 X-Tenant-Id）
+        - id: inspection-route
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/api/inspections/**
         # Phase 9：财务记账（收支流水 + 汇总 · 强制 X-Tenant-Id）
         - id: finance-route
           uri: lb://lieshoucloud-finance
@@ -101,6 +120,11 @@ spring:
           uri: lb://lieshoucloud-edu
           predicates:
             - Path=/api/teachers/**,/api/dispatches/**,/api/supplies/**,/api/consumptions/**,/api/settlements/**
+        # ADR-0036：法律行业能力域（案件 + 办案时间线 · 强制 X-Tenant-Id）
+        - id: legal-route
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/api/legal/**
         # core.file：文件服务（上传/下载/预览/回收站 · 强制 X-Tenant-Id）
         - id: file-route
           uri: lb://lieshoucloud-file
@@ -113,49 +137,55 @@ spring:
           predicates:
             - Path=/v3/api-docs/user,/v3/api-docs/user/**
           filters:
-            - RewritePath=/v3/api-docs/user(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/user(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-admin
           uri: lb://lieshoucloud-admin
           predicates:
             - Path=/v3/api-docs/admin,/v3/api-docs/admin/**
           filters:
-            - RewritePath=/v3/api-docs/admin(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/admin(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-crm
           uri: lb://lieshoucloud-crm
           predicates:
             - Path=/v3/api-docs/crm,/v3/api-docs/crm/**
           filters:
-            - RewritePath=/v3/api-docs/crm(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/crm(?<segment>/.*)?,/v3/api-docs${segment}
+        - id: openapi-legal
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/v3/api-docs/legal,/v3/api-docs/legal/**
+          filters:
+            - RewritePath=/v3/api-docs/legal(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-inventory
           uri: lb://lieshoucloud-inventory
           predicates:
             - Path=/v3/api-docs/inventory,/v3/api-docs/inventory/**
           filters:
-            - RewritePath=/v3/api-docs/inventory(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/inventory(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-finance
           uri: lb://lieshoucloud-finance
           predicates:
             - Path=/v3/api-docs/finance,/v3/api-docs/finance/**
           filters:
-            - RewritePath=/v3/api-docs/finance(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/finance(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-approval
           uri: lb://lieshoucloud-approval
           predicates:
             - Path=/v3/api-docs/approval,/v3/api-docs/approval/**
           filters:
-            - RewritePath=/v3/api-docs/approval(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/approval(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-edu
           uri: lb://lieshoucloud-edu
           predicates:
             - Path=/v3/api-docs/edu,/v3/api-docs/edu/**
           filters:
-            - RewritePath=/v3/api-docs/edu(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/edu(?<segment>/.*)?,/v3/api-docs${segment}
         - id: openapi-file
           uri: lb://lieshoucloud-file
           predicates:
             - Path=/v3/api-docs/file,/v3/api-docs/file/**
           filters:
-            - RewritePath=/v3/api-docs/file(?<segment>/.*),/v3/api-docs${segment}
+            - RewritePath=/v3/api-docs/file(?<segment>/.*)?,/v3/api-docs${segment}
 
         # Swagger UI 转发（开发期好用；prod 由 nginx 反代更稳）
         - id: swagger-ui-user
@@ -163,49 +193,55 @@ spring:
           predicates:
             - Path=/swagger-ui/user,/swagger-ui/user/**
           filters:
-            - RewritePath=/swagger-ui/user(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/user(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-admin
           uri: lb://lieshoucloud-admin
           predicates:
             - Path=/swagger-ui/admin,/swagger-ui/admin/**
           filters:
-            - RewritePath=/swagger-ui/admin(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/admin(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-crm
           uri: lb://lieshoucloud-crm
           predicates:
             - Path=/swagger-ui/crm,/swagger-ui/crm/**
           filters:
-            - RewritePath=/swagger-ui/crm(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/crm(?<segment>/.*)?,/swagger-ui${segment}
+        - id: swagger-ui-legal
+          uri: lb://lieshoucloud-legal
+          predicates:
+            - Path=/swagger-ui/legal,/swagger-ui/legal/**
+          filters:
+            - RewritePath=/swagger-ui/legal(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-inventory
           uri: lb://lieshoucloud-inventory
           predicates:
             - Path=/swagger-ui/inventory,/swagger-ui/inventory/**
           filters:
-            - RewritePath=/swagger-ui/inventory(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/inventory(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-finance
           uri: lb://lieshoucloud-finance
           predicates:
             - Path=/swagger-ui/finance,/swagger-ui/finance/**
           filters:
-            - RewritePath=/swagger-ui/finance(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/finance(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-approval
           uri: lb://lieshoucloud-approval
           predicates:
             - Path=/swagger-ui/approval,/swagger-ui/approval/**
           filters:
-            - RewritePath=/swagger-ui/approval(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/approval(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-edu
           uri: lb://lieshoucloud-edu
           predicates:
             - Path=/swagger-ui/edu,/swagger-ui/edu/**
           filters:
-            - RewritePath=/swagger-ui/edu(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/edu(?<segment>/.*)?,/swagger-ui${segment}
         - id: swagger-ui-file
           uri: lb://lieshoucloud-file
           predicates:
             - Path=/swagger-ui/file,/swagger-ui/file/**
           filters:
-            - RewritePath=/swagger-ui/file(?<segment>/.*),/swagger-ui${segment}
+            - RewritePath=/swagger-ui/file(?<segment>/.*)?,/swagger-ui${segment}
 
 # ============================================================
 # 应用配置
@@ -224,6 +260,15 @@ app:
 
 server:
   port: ${GATEWAY_PORT:9000}
+
+# 关闭 gateway 自身 SpringDoc（webflux）的 /v3/api-docs/{group} handler：
+# 否则会拦截 openapi-* 路由转发（/v3/api-docs/xxx → 下游服务 404 group）。
+# 各下游服务自带 spec，swagger-ui/xxx 路由转发到服务即可（ADR-0016）。
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 management:
   endpoints:

@@ -12,11 +12,27 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
+<<<<<<< HEAD
 import cn.huntercat.lieshoucloudpro.user.domain.User;
 import cn.huntercat.lieshoucloudpro.user.service.UserBizException;
 import cn.huntercat.lieshoucloudpro.user.service.UserService;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.CreateUserRequest;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.UpdateUserRequest;
+=======
+import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
+import cn.huntercat.lieshoucloudpro.user.domain.Role;
+import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
+import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
+import cn.huntercat.lieshoucloudpro.user.domain.TenantInvite;
+import cn.huntercat.lieshoucloudpro.user.domain.TenantInviteRepository;
+import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
+import cn.huntercat.lieshoucloudpro.user.domain.User;
+import cn.huntercat.lieshoucloudpro.user.domain.UserRepository;
+import cn.huntercat.lieshoucloudpro.user.service.AuditService;
+import cn.huntercat.lieshoucloudpro.user.service.MenuService;
+import cn.huntercat.lieshoucloudpro.user.web.dto.UserAuthView;
+>>>>>>> origin/dev
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -37,10 +53,40 @@ import java.util.Map;
 @Tag(name = "User", description = "User CRUD + lookup endpoints")
 public class UserController {
 
+<<<<<<< HEAD
   private final UserService users;
 
   public UserController(UserService users) {
     this.users = users;
+=======
+  private final UserRepository repo;
+  private final TenantRepository tenantRepo;
+  private final TenantInviteRepository inviteRepo;
+  private final RoleRepository roleRepo;
+  private final PermissionRepository permissionRepo;
+  private final MenuService menuService;
+  private final AuditService audit;
+  private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+  /** 默认租户编码（兼容未显式传租户的调用） · ADR-0022 */
+  private static final String DEFAULT_TENANT_CODE = "huntercat";
+
+  public UserController(
+      UserRepository repo,
+      TenantRepository tenantRepo,
+      TenantInviteRepository inviteRepo,
+      RoleRepository roleRepo,
+      PermissionRepository permissionRepo,
+      MenuService menuService,
+      AuditService audit) {
+    this.repo = repo;
+    this.tenantRepo = tenantRepo;
+    this.inviteRepo = inviteRepo;
+    this.roleRepo = roleRepo;
+    this.permissionRepo = permissionRepo;
+    this.menuService = menuService;
+    this.audit = audit;
+>>>>>>> origin/dev
   }
 
   @Operation(
@@ -186,6 +232,41 @@ public class UserController {
   }
 
   /**
+   * Phase 11（ADR-0024 P2 阶段 4）: 菜单数据驱动 —— 当前用户可见菜单树.
+   *
+   * <p>默认清单 ⊕ 租户覆盖（tenant_menu_configs）⊕ 权限过滤（X-User-Permissions）→ 排序树。 由 gateway 经 JWT 鉴权后透传
+   * X-Tenant-Id / X-User-Permissions；租户不存在 → 404。
+   */
+  @Operation(summary = "Get current user menu tree (data-driven · ADR-0024 P2)")
+  @ApiResponse(responseCode = "200", description = "Menu tree (permission-filtered)")
+  @ApiResponse(responseCode = "404", description = "Tenant not found")
+  @GetMapping("/me/menus")
+  public ResponseEntity<?> myMenus(
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-Tenant-Id",
+              required = false)
+          String tenantHeader,
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-User-Permissions",
+              required = false)
+          String permissionsHeader) {
+    Long tenantId = parseUserId(tenantHeader);
+    if (tenantId == null) {
+      return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+          .body(Map.of("error", "TENANT_CONTEXT_REQUIRED", "message", "缺少租户上下文（X-Tenant-Id）"));
+    }
+    Tenant tenant = tenantRepo.findById(tenantId).orElse(null);
+    if (tenant == null) {
+      return ResponseEntity.notFound().build();
+    }
+    List<String> permissions =
+        permissionsHeader == null || permissionsHeader.isBlank()
+            ? List.of()
+            : List.of(permissionsHeader.split(","));
+    return ResponseEntity.ok(menuService.buildMenus(tenantId, tenant.getEdition(), permissions));
+  }
+
+  /**
    * Phase 5 + Phase 8: 给 auth-service Feign 用：按租户 + username 查鉴权视图（含 passwordHash）.
    *
    * <p>仅 service-to-service 调用；通过 gateway 白名单 {@code /api/users/auth/**} 路径实现.
@@ -201,7 +282,38 @@ public class UserController {
       @Parameter(description = "Tenant code", example = "huntercat") @PathVariable
           String tenantCode,
       @Parameter(description = "Username") @PathVariable String username) {
+<<<<<<< HEAD
     return okOrError(() -> users.authByTenantAndUsername(tenantCode, username));
+=======
+    Tenant tenant = tenantRepo.findByCode(tenantCode).orElse(null);
+    if (tenant == null) {
+      return ResponseEntity.notFound().build();
+    }
+    // Phase 8: 租户被停用 → 阻断该租户所有登录
+    if (tenant.getStatus() != Tenant.Status.ACTIVE) {
+      return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+          .body(Map.of("error", "TENANT_DISABLED", "tenantCode", tenantCode));
+    }
+    return repo.findByTenantIdAndUsername(tenant.getId(), username)
+        .map(
+            u ->
+                ResponseEntity.ok(
+                    new UserAuthView(
+                        u.getId(),
+                        u.getTenantId(),
+                        tenant.getCode(),
+                        tenant.getName(),
+                        tenant.getEdition() == null ? null : tenant.getEdition().name(),
+                        u.getUsername(),
+                        u.getDisplayName(),
+                        u.getPasswordHash(),
+                        u.getRoles() == null || u.getRoles().isEmpty()
+                            ? List.of("USER")
+                            : u.getRoles().stream().map(Role::getCode).toList(),
+                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+                        permissionRepo.findCodesByUserId(u.getId()))))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+>>>>>>> origin/dev
   }
 
   /**
@@ -229,7 +341,50 @@ public class UserController {
   @GetMapping("/auth/by-email/{email}")
   public ResponseEntity<?> authByEmail(
       @Parameter(description = "Email", example = "user@huntercat.cn") @PathVariable String email) {
+<<<<<<< HEAD
     return okOrError(() -> users.authByEmail(email));
+=======
+    return repo.findByEmail(email)
+        .map(u -> ResponseEntity.ok(toAuthView(u)))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  /** 按角色 code 查 Role 实体（不存在返回 null） */
+  /** X-User-Id header → Long（gateway 从 JWT uid 注入）；空/非法 → null */
+  private static Long parseUserId(String header) {
+    if (header == null || header.isBlank()) return null;
+    try {
+      return Long.parseLong(header.trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  private Role roleByCode(String code) {
+    return roleRepo.findByCode(code).orElse(null);
+  }
+
+  /** 组装 UserAuthView（含租户编码 + 角色 codes + 权限 codes · ADR-0024 Phase 2） */
+  private UserAuthView toAuthView(User u) {
+    Tenant tenant = tenantRepo.findById(u.getTenantId()).orElse(null);
+    java.util.List<String> roleCodes =
+        u.getRoles() == null || u.getRoles().isEmpty()
+            ? List.of("USER")
+            : u.getRoles().stream().map(Role::getCode).toList();
+    java.util.List<String> permissionCodes = permissionRepo.findCodesByUserId(u.getId());
+    return new UserAuthView(
+        u.getId(),
+        u.getTenantId(),
+        tenant == null ? null : tenant.getCode(),
+        tenant == null ? null : tenant.getName(),
+        tenant == null || tenant.getEdition() == null ? null : tenant.getEdition().name(),
+        u.getUsername(),
+        u.getDisplayName(),
+        u.getPasswordHash(),
+        roleCodes,
+        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+        permissionCodes);
+>>>>>>> origin/dev
   }
 
   /**
