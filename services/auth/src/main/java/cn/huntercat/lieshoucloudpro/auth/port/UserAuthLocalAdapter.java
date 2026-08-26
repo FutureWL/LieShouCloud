@@ -11,7 +11,6 @@ import cn.huntercat.lieshoucloudpro.user.service.VerificationService;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.CreateUserRequest;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.UpdateUserRequest;
 import feign.FeignException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -38,7 +37,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
     try {
       return toAuthView(users.authByTenantAndUsername(tenantCode, username));
     } catch (UserBizException e) {
-      throw feign(e.getStatus(), e.getError());
+      throw FeignErrors.from(e.getStatus(), e.getError());
     }
   }
 
@@ -55,9 +54,9 @@ public class UserAuthLocalAdapter implements UserAuthPort {
           body.get("target"),
           VerificationCode.Purpose.valueOf(body.get("purpose")));
     } catch (IllegalArgumentException e) {
-      throw feign(400, "INVALID_CHANNEL_OR_PURPOSE");
+      throw FeignErrors.from(400, "INVALID_CHANNEL_OR_PURPOSE");
     } catch (IllegalStateException e) {
-      throw feign(400, e.getMessage() == null ? "SEND_TOO_FREQUENT" : e.getMessage());
+      throw FeignErrors.from(400, e.getMessage() == null ? "SEND_TOO_FREQUENT" : e.getMessage());
     }
   }
 
@@ -70,7 +69,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
           VerificationCode.Purpose.valueOf(body.get("purpose")),
           body.get("code"));
     } catch (IllegalArgumentException e) {
-      throw feign(400, e.getMessage() == null ? "INVALID_CODE" : e.getMessage());
+      throw FeignErrors.from(400, e.getMessage() == null ? "INVALID_CODE" : e.getMessage());
     }
   }
 
@@ -79,7 +78,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
     try {
       return toAuthView(users.authByPhone(phone));
     } catch (UserBizException e) {
-      throw feign(e.getStatus(), e.getError());
+      throw FeignErrors.from(e.getStatus(), e.getError());
     }
   }
 
@@ -88,7 +87,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
     try {
       return toAuthView(users.authByEmail(email));
     } catch (UserBizException e) {
-      throw feign(e.getStatus(), e.getError());
+      throw FeignErrors.from(e.getStatus(), e.getError());
     }
   }
 
@@ -97,7 +96,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
     if (body.get("username") == null
         || body.get("displayName") == null
         || body.get("password") == null) {
-      throw feign(400, "VALIDATION_FAILED");
+      throw FeignErrors.from(400, "VALIDATION_FAILED");
     }
     try {
       return users.create(
@@ -113,7 +112,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
           null,
           null);
     } catch (UserBizException e) {
-      throw feign(e.getStatus(), e.getError());
+      throw FeignErrors.from(e.getStatus(), e.getError());
     }
   }
 
@@ -127,7 +126,7 @@ public class UserAuthLocalAdapter implements UserAuthPort {
           null,
           null);
     } catch (UserBizException e) {
-      throw feign(e.getStatus(), e.getError());
+      throw FeignErrors.from(e.getStatus(), e.getError());
     }
   }
 
@@ -144,16 +143,5 @@ public class UserAuthLocalAdapter implements UserAuthPort {
         v.roles(),
         v.status(),
         v.permissions());
-  }
-
-  /** 构造与 msa 等价的 FeignException（body 带标准化错误码，供 AuthService.extractError 透传）。 */
-  private static FeignException feign(int status, String error) {
-    byte[] body = ("{\"error\":\"" + error + "\"}").getBytes(StandardCharsets.UTF_8);
-    Map<String, java.util.Collection<String>> headers = Map.of();
-    return switch (status) {
-      case 403 -> new FeignException.Forbidden(error, null, body, headers);
-      case 404 -> new FeignException.NotFound(error, null, body, headers);
-      default -> new FeignException.BadRequest(error, null, body, headers);
-    };
   }
 }

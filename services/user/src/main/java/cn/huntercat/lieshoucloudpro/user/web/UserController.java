@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import cn.huntercat.lieshoucloudpro.user.domain.User;
-import cn.huntercat.lieshoucloudpro.user.service.UserBizException;
 import cn.huntercat.lieshoucloudpro.user.service.UserService;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.CreateUserRequest;
 import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.UpdateUserRequest;
@@ -59,7 +58,8 @@ public class UserController {
           String rolesHeader) {
     return okOrError(
         () ->
-            users.list(parseTenantHeader(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
+            users.list(
+                TenantContext.parseLong(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
   }
 
   @Operation(summary = "Count users")
@@ -75,7 +75,8 @@ public class UserController {
           String rolesHeader) {
     return okOrError(
         () ->
-            users.count(parseTenantHeader(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
+            users.count(
+                TenantContext.parseLong(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
   }
 
   @Operation(
@@ -93,7 +94,7 @@ public class UserController {
               required = false)
           String tenantHeader) {
     return users
-        .findById(id, parseTenantHeader(tenantHeader))
+        .findById(id, TenantContext.parseLong(tenantHeader))
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -114,7 +115,12 @@ public class UserController {
           String userIdHeader,
       jakarta.servlet.http.HttpServletRequest req) {
     return okOrError(
-        () -> users.create(body, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req));
+        () ->
+            users.create(
+                body,
+                TenantContext.parseLong(tenantHeader),
+                TenantContext.parseLong(userIdHeader),
+                req));
   }
 
   @Operation(
@@ -140,7 +146,12 @@ public class UserController {
     return okOrError(
         () ->
             users
-                .update(id, body, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req)
+                .update(
+                    id,
+                    body,
+                    TenantContext.parseLong(tenantHeader),
+                    TenantContext.parseLong(userIdHeader),
+                    req)
                 .map(u -> (Object) u)
                 .orElse(null),
         true);
@@ -161,15 +172,15 @@ public class UserController {
       @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false)
           String userIdHeader,
       jakarta.servlet.http.HttpServletRequest req) {
-    try {
-      boolean deleted =
-          users
-              .delete(id, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req)
-              .isPresent();
-      return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
-    } catch (UserBizException e) {
-      return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getError()));
-    }
+    boolean deleted =
+        users
+            .delete(
+                id,
+                TenantContext.parseLong(tenantHeader),
+                TenantContext.parseLong(userIdHeader),
+                req)
+            .isPresent();
+    return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
   }
 
   /** 给 admin-service Feign 用：根据 username 查 User（不含密码 hash）. */
@@ -204,7 +215,8 @@ public class UserController {
               value = "X-User-Permissions",
               required = false)
           String permissionsHeader) {
-    return okOrError(() -> users.buildMenus(parseTenantHeader(tenantHeader), permissionsHeader));
+    return okOrError(
+        () -> users.buildMenus(TenantContext.parseLong(tenantHeader), permissionsHeader));
   }
 
   /**
@@ -284,27 +296,7 @@ public class UserController {
   // 工具
   // ============================================================
 
-  /** 解析 X-Tenant-Id header（非法/空 → null = 平台上下文） */
-  private Long parseTenantHeader(String value) {
-    if (value == null || value.isBlank()) return null;
-    try {
-      return Long.parseLong(value);
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
-
-  /** X-User-Id header → Long（gateway 从 JWT uid 注入）；空/非法 → null */
-  private static Long parseUserId(String header) {
-    if (header == null || header.isBlank()) return null;
-    try {
-      return Long.parseLong(header.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
-
-  /** 执行业务并统一转译 UserBizException → HTTP 状态 + 错误码。 */
+  /** 执行业务；业务异常（UserBizException）由 {@link UserBizExceptionAdvice} 统一转译 HTTP 状态 + 错误码。 */
   private static <T> ResponseEntity<T> okOrError(java.util.function.Supplier<T> action) {
     return okOrError(action, false);
   }
@@ -312,14 +304,10 @@ public class UserController {
   /** {@code notFoundAsNull=true} 时业务返回 null（如 update 的 Optional.empty）→ 404。 */
   private static <T> ResponseEntity<T> okOrError(
       java.util.function.Supplier<T> action, boolean notFoundAsNull) {
-    try {
-      T result = action.get();
-      if (notFoundAsNull && result == null) {
-        return ResponseEntity.notFound().build();
-      }
-      return ResponseEntity.ok(result);
-    } catch (UserBizException e) {
-      return ResponseEntity.status(e.getStatus()).body((T) Map.of("error", e.getError()));
+    T result = action.get();
+    if (notFoundAsNull && result == null) {
+      return ResponseEntity.notFound().build();
     }
+    return ResponseEntity.ok(result);
   }
 }

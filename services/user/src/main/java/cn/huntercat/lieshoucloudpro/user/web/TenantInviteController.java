@@ -50,19 +50,10 @@ public class TenantInviteController {
   /** RBAC（ADR-0024）：平台管理员 或 本租户管理员；否则 403 */
   private boolean authorized(String rolesHeader, String tenantHeader, Long tenantId) {
     if (AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) return true;
-    Long headerTenant = parseTenantHeader(tenantHeader);
+    Long headerTenant = TenantContext.parseLong(tenantHeader);
     return AuthRoles.hasAny(rolesHeader, AuthRoles.TENANT_ADMIN)
         && headerTenant != null
         && headerTenant.equals(tenantId);
-  }
-
-  private Long parseTenantHeader(String value) {
-    if (value == null || value.isBlank()) return null;
-    try {
-      return Long.parseLong(value);
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private ResponseEntity<Object> forbidden() {

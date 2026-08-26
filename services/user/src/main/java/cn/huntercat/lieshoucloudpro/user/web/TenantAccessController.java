@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import cn.huntercat.lieshoucloudpro.user.service.TenantAccessService;
-import cn.huntercat.lieshoucloudpro.user.service.UserBizException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
@@ -38,7 +37,7 @@ public class TenantAccessController {
   @GetMapping("/me")
   public ResponseEntity<?> me(
       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-    Long uid = parseLong(userIdHeader);
+    Long uid = TenantContext.parseLong(userIdHeader);
     if (uid == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(Map.of("error", "UNAUTHORIZED", "message", "missing X-User-Id"));
@@ -52,7 +51,7 @@ public class TenantAccessController {
       @PathVariable Long userId,
       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
       @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader) {
-    Long caller = parseLong(userIdHeader);
+    Long caller = TenantContext.parseLong(userIdHeader);
     boolean self = caller != null && caller.equals(userId);
     if (!self && !AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -61,21 +60,8 @@ public class TenantAccessController {
     return build(userId);
   }
 
-  /** 组装可访问租户列表（业务异常 → HTTP 语义，同 UserController 模式） */
+  /** 组装可访问租户列表（业务异常由 {@link UserBizExceptionAdvice} 统一转译 HTTP 状态 + 错误码） */
   private ResponseEntity<?> build(Long userId) {
-    try {
-      return ResponseEntity.ok(tenantAccessService.buildAccess(userId));
-    } catch (UserBizException e) {
-      return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getError()));
-    }
-  }
-
-  private static Long parseLong(String s) {
-    if (s == null || s.isBlank()) return null;
-    try {
-      return Long.parseLong(s);
-    } catch (NumberFormatException e) {
-      return null;
-    }
+    return ResponseEntity.ok(tenantAccessService.buildAccess(userId));
   }
 }

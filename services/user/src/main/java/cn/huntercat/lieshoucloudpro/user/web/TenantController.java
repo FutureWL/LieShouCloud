@@ -180,8 +180,8 @@ public class TenantController {
     }
     Tenant saved = repo.save(t);
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.CREATE,
         "TENANT",
         saved.getId(),
@@ -251,8 +251,8 @@ public class TenantController {
               }
               Tenant saved = repo.save(t);
               audit.recordSuccess(
-                  parseLong(tenantHeader),
-                  parseLong(userIdHeader),
+                  TenantContext.parseLong(tenantHeader),
+                  TenantContext.parseLong(userIdHeader),
                   AuditLog.Action.UPDATE,
                   "TENANT",
                   saved.getId(),
@@ -304,23 +304,14 @@ public class TenantController {
     Tenant t = opt.get();
     repo.delete(t);
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.DELETE,
         "TENANT",
         id,
         "删除租户 " + t.getName() + " (" + t.getCode() + ")",
         req);
     return ResponseEntity.noContent().build();
-  }
-
-  private static Long parseLong(String s) {
-    if (s == null || s.isBlank()) return null;
-    try {
-      return Long.parseLong(s.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private ResponseEntity<Object> forbidden() {
