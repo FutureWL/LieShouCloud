@@ -10,10 +10,8 @@ test/fixtures/mock-*.key
 **/.env.example
 
 # 测试专用假 JWT 密钥（HS256 长度校验，非真实凭据，明文值 test-secret-...）
-# gitleaks 8.x fingerprint 格式：commit:file:rule:line（.* 通配 commit/行号）
-.*:services/auth/src/test/java/.*/AuthApplicationTests\.java:.*:.*
-.*:services/auth/src/test/java/.*/AuthRateLimitTest\.java:.*:.*
-.*:services/auth/src/test/java/.*/AuthServiceSwitchTest\.java:.*:.*
+# gitleaks 8.x fingerprint 格式：commit:file:rule:line（条目为 fingerprint 前缀，须含 commit hash）
+ba9a9d804b731a8b248c076c92831bed351ff418:services/auth/src/test/java/cn/huntercat/lieshoucloudpro/auth/service/AuthServiceSwitchTest.java:generic-api-key:32
 
 # OAuthControllerTest 历史提交中的测试假 JWT 密钥（明文 test-secret-...，非真实凭据；HEAD 已改 @DynamicPropertySource）
 44bf2c58e092d6d15c7d5649674fc5567fb0f698:services/auth/src/test/java/cn/huntercat/lieshoucloudpro/auth/web/OAuthControllerTest.java:generic-api-key:36
