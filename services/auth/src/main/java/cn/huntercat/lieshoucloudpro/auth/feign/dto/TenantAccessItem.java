@@ -14,4 +14,5 @@ public record TenantAccessItem(
     String tenantName,
     String edition,
     List<String> roles,
+    List<String> permissions,
     boolean primary) {}

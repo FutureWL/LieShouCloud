@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
 import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.User;
@@ -40,12 +41,17 @@ public class TenantAccessController {
   private final UserRepository userRepo;
   private final TenantRepository tenantRepo;
   private final UserTenantGrantRepository grantRepo;
+  private final PermissionRepository permissionRepo;
 
   public TenantAccessController(
-      UserRepository userRepo, TenantRepository tenantRepo, UserTenantGrantRepository grantRepo) {
+      UserRepository userRepo,
+      TenantRepository tenantRepo,
+      UserTenantGrantRepository grantRepo,
+      PermissionRepository permissionRepo) {
     this.userRepo = userRepo;
     this.tenantRepo = tenantRepo;
     this.grantRepo = grantRepo;
+    this.permissionRepo = permissionRepo;
   }
 
   /** 可访问租户项 */
@@ -55,6 +61,7 @@ public class TenantAccessController {
       String tenantName,
       String edition,
       List<String> roles,
+      List<String> permissions,
       boolean primary) {}
 
   @Operation(summary = "当前用户可访问租户列表（子公司切换器）")
@@ -111,6 +118,10 @@ public class TenantAccessController {
     }
 
     List<TenantAccessItem> items = new ArrayList<>();
+    List<String> primaryPermissions =
+        permissionRepo.findCodesByUserId(userId) == null
+            ? List.of()
+            : permissionRepo.findCodesByUserId(userId);
     items.add(
         new TenantAccessItem(
             primary.getId(),
@@ -118,19 +129,23 @@ public class TenantAccessController {
             primary.getName(),
             primary.getEdition() == null ? null : primary.getEdition().name(),
             primaryRoles.isEmpty() ? List.of("USER") : primaryRoles,
+            primaryPermissions,
             true));
     for (Map.Entry<Long, List<String>> e : grantRolesByTenant.entrySet()) {
       Tenant t =
           tenantRepo
               .findById(e.getKey())
               .orElseThrow(() -> new IllegalArgumentException("子公司租户不存在: " + e.getKey()));
+      List<String> roleCodes = e.getValue().stream().distinct().collect(Collectors.toList());
+      List<String> perms = permissionRepo.findCodesByRoleCodes(roleCodes);
       items.add(
           new TenantAccessItem(
               t.getId(),
               t.getCode(),
               t.getName(),
               t.getEdition() == null ? null : t.getEdition().name(),
-              e.getValue().stream().distinct().collect(Collectors.toList()),
+              roleCodes,
+              perms == null ? List.of() : perms,
               false));
     }
     items.sort(

@@ -44,8 +44,16 @@ class AuthServiceSwitchTest {
 
   private static final List<TenantAccessItem> ACCESS =
       List.of(
-          new TenantAccessItem(1L, "haizan", "海赞集团", "GENERIC", List.of("TENANT_ADMIN"), true),
-          new TenantAccessItem(2L, "nanchang", "南昌猎手猫", "GENERIC", List.of("USER"), false));
+          new TenantAccessItem(
+              1L,
+              "haizan",
+              "海赞集团",
+              "GENERIC",
+              List.of("TENANT_ADMIN"),
+              List.of("tenant:manage", "iot:monitor"),
+              true),
+          new TenantAccessItem(
+              2L, "nanchang", "南昌猎手猫", "GENERIC", List.of("USER"), List.of("iot:monitor"), false));
 
   @Test
   @DisplayName("切换成功：重签 token 的 tenantCode/tenantName/roles 指向目标子公司")

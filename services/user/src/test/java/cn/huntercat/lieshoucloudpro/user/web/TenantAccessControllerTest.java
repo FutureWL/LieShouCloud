@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cn.huntercat.lieshoucloudpro.user.PostgresTestSupport;
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Role;
 import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
 import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
@@ -44,6 +45,8 @@ class TenantAccessControllerTest extends PostgresTestSupport {
 
   @MockitoBean private UserTenantGrantRepository grantRepo;
 
+  @MockitoBean private PermissionRepository permissionRepo;
+
   private User userWithRoles(Long id, Long tenantId, Role... roles) {
     User u = new User();
     u.setId(id);
@@ -68,6 +71,8 @@ class TenantAccessControllerTest extends PostgresTestSupport {
     when(tenantRepo.findById(1L)).thenReturn(Optional.of(primary));
     when(tenantRepo.findById(2L)).thenReturn(Optional.of(sub));
     when(grantRepo.findByUserId(10L)).thenReturn(List.of(grant));
+    when(permissionRepo.findCodesByUserId(10L)).thenReturn(List.of("tenant:manage"));
+    when(permissionRepo.findCodesByRoleCodes(List.of("USER"))).thenReturn(List.of("iot:monitor"));
 
     mockMvc
         .perform(get("/api/tenant-access/me").header("X-User-Id", "10"))
@@ -75,9 +80,11 @@ class TenantAccessControllerTest extends PostgresTestSupport {
         .andExpect(jsonPath("$[0].tenantCode").value("haizan"))
         .andExpect(jsonPath("$[0].primary").value(true))
         .andExpect(jsonPath("$[0].roles[0]").value("TENANT_ADMIN"))
+        .andExpect(jsonPath("$[0].permissions[0]").value("tenant:manage"))
         .andExpect(jsonPath("$[1].tenantCode").value("nanchang"))
         .andExpect(jsonPath("$[1].primary").value(false))
-        .andExpect(jsonPath("$[1].roles[0]").value("USER"));
+        .andExpect(jsonPath("$[1].roles[0]").value("USER"))
+        .andExpect(jsonPath("$[1].permissions[0]").value("iot:monitor"));
   }
 
   @Test
@@ -90,6 +97,7 @@ class TenantAccessControllerTest extends PostgresTestSupport {
     when(userRepo.findById(10L)).thenReturn(Optional.of(u));
     when(tenantRepo.findById(1L)).thenReturn(Optional.of(primary));
     when(grantRepo.findByUserId(10L)).thenReturn(List.of());
+    when(permissionRepo.findCodesByUserId(10L)).thenReturn(List.of());
 
     // 本人（auth 内部透传 X-User-Id）→ 200
     mockMvc

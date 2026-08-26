@@ -308,8 +308,10 @@ public class AuthService {
             .orElseThrow(() -> new BadCredentialsException("NO_ACCESS_TO_TENANT"));
     List<String> roles =
         target.roles() == null || target.roles().isEmpty() ? List.of("USER") : target.roles();
+    List<String> permissions = target.permissions() == null ? List.of() : target.permissions();
     String accessToken =
-        jwt.generateAccessToken(userId, target.tenantId(), target.tenantCode(), username, roles);
+        jwt.generateAccessToken(
+            userId, target.tenantId(), target.tenantCode(), username, roles, permissions);
     String refresh = jwt.generateRefreshToken(userId, username);
     return new TokenResponse(
         accessToken,
