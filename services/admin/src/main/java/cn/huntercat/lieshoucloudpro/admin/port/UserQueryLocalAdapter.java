@@ -13,7 +13,7 @@ import cn.huntercat.lieshoucloudpro.user.service.UserService;
  * <p>激活条件：{@code app.deploy-mode=monolith}。查询失败返回 {@code null}（等价 msa 下 Feign fallback 语义）； count
  * 无租户上下文需平台管理员（等价 msa 下 user-service 403 → 熔断 fallback 路径）。
  */
-@Component
+@Component("adminUserQueryLocalAdapter")
 @ConditionalOnProperty(name = "app.deploy-mode", havingValue = "monolith")
 public class UserQueryLocalAdapter implements UserQueryPort {
 

@@ -17,7 +17,7 @@ import java.util.Map;
  * <p>激活条件：{@code app.deploy-mode=monolith}。查询失败转译 {@link FeignException} 子类（404）——调用方现有 try-catch
  * 零修改。
  */
-@Component
+@Component("approvalUserQueryLocalAdapter")
 @ConditionalOnProperty(name = "app.deploy-mode", havingValue = "monolith")
 public class UserQueryLocalAdapter implements UserQueryPort {
 
