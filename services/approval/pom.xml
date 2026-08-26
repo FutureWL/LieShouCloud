@@ -104,6 +104,11 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- exec classifier：主 jar 保持普通可依赖形态（finance/inventory monolith
+                                 适配以 approval 为库依赖，fat jar 的 BOOT-INF/ 布局不可被依赖） -->
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
