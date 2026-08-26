@@ -15,7 +15,7 @@ FROM eclipse-temurin:21-jre-alpine AS runtime
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
-COPY --from=builder /workspace/user/target/lieshoucloud-user.jar /app/app.jar
+COPY --from=builder /workspace/user/target/lieshoucloud-user-exec.jar /app/app.jar
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Dfile.encoding=UTF-8"
 USER app

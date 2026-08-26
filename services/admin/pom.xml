@@ -115,6 +115,11 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- exec classifier：主 jar 保持普通可依赖形态（cloud-monolith 以 auth/admin
+                                 为库依赖，fat jar 的 BOOT-INF/ 布局不可被依赖——同 user/approval 先例） -->
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

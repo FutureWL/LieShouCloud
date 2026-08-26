@@ -92,7 +92,7 @@ public class AuditService {
         clientIp(req),
         userAgent(req),
         Outcome.SUCCESS,
-        req.getHeader("X-Request-Id"));
+        req == null ? null : req.getHeader("X-Request-Id"));
   }
 
   private static String truncate(String s, int max) {
