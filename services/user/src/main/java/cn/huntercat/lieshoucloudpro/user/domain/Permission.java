@@ -7,27 +7,28 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 角色实体（RBAC · ADR-0024）.
+ * 权限点实体（RBAC · ADR-0024 Phase 2 · 平台基础层）.
  *
- * <p>两级 scope：PLATFORM（平台运营）/ TENANT（租户内）。系统内置角色（PLATFORM_ADMIN / TENANT_ADMIN / USER）不可删除。
+ * <p>菜单可见性与接口鉴权共用同一权限码数据源：{@code code} 形如 {@code <域>:<资源>:<动作>}（如 {@code legal:use} / {@code
+ * tenant:manage}）。角色-权限经 {@code role_permissions} 多对多关联； 用户权限 = 用户角色并集。
  */
 @Entity
-@Table(name = "roles")
-@Schema(description = "Role definition (RBAC) owned by user-service")
-public class Role {
+@Table(
+    name = "permissions",
+    indexes = {@Index(name = "idx_permissions_scope", columnList = "scope")})
+public class Permission {
 
   public enum Scope {
     PLATFORM,
@@ -38,17 +39,17 @@ public class Role {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, unique = true, length = 32)
+  @Column(nullable = false, length = 64, unique = true)
   private String code;
 
-  @Column(nullable = false, length = 64)
+  @Column(nullable = false, length = 128)
   private String name;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 16)
-  private Scope scope = Scope.TENANT;
+  @Column(nullable = false, length = 12)
+  private Scope scope;
 
-  @Column(length = 255)
+  @Column(length = 500)
   private String description;
 
   @Column(name = "is_system", nullable = false)
@@ -57,42 +58,40 @@ public class Role {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
+  @ManyToMany
+  @JoinTable(
+      name = "role_permissions",
+      joinColumns = @JoinColumn(name = "permission_id"),
+      inverseJoinColumns = @JoinColumn(name = "role_id"))
+  private List<Role> roles = new ArrayList<>();
 
-  /** 反向集合（mappedBy roles）：供权限查询 {@code Role.users} 使用；JSON 忽略避免循环。 */
-  @JsonIgnore
-  @ManyToMany(mappedBy = "roles")
-  private List<User> users = new ArrayList<>();
+  public Permission() {}
 
-  public Role() {}
-
-  public Role(String code, String name, Scope scope, String description, boolean system) {
+  public Permission(String code, String name, Scope scope) {
     this.code = code;
     this.name = name;
     this.scope = scope;
-    this.description = description;
-    this.system = system;
   }
 
   @PrePersist
   void onCreate() {
-    Instant now = Instant.now();
-    if (createdAt == null) createdAt = now;
-    updatedAt = now;
-  }
-
-  @PreUpdate
-  void onUpdate() {
-    updatedAt = Instant.now();
+    if (createdAt == null) createdAt = Instant.now();
   }
 
   public Long getId() {
     return id;
   }
 
+  public void setId(Long id) {
+    this.id = id;
+  }
+
   public String getCode() {
     return code;
+  }
+
+  public void setCode(String code) {
+    this.code = code;
   }
 
   public String getName() {
@@ -123,19 +122,23 @@ public class Role {
     return system;
   }
 
+  public void setSystem(boolean system) {
+    this.system = system;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
 
-  public Instant getUpdatedAt() {
-    return updatedAt;
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
   }
 
-  public List<User> getUsers() {
-    return users;
+  public List<Role> getRoles() {
+    return roles;
   }
 
-  public void setUsers(List<User> users) {
-    this.users = users;
+  public void setRoles(List<Role> roles) {
+    this.roles = roles;
   }
 }

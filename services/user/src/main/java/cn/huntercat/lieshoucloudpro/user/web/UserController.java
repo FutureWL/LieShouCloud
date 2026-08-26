@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Role;
 import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
@@ -23,6 +24,7 @@ import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.User;
 import cn.huntercat.lieshoucloudpro.user.domain.UserRepository;
 import cn.huntercat.lieshoucloudpro.user.service.AuditService;
+import cn.huntercat.lieshoucloudpro.user.service.MenuService;
 import cn.huntercat.lieshoucloudpro.user.web.dto.UserAuthView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,6 +52,8 @@ public class UserController {
   private final TenantRepository tenantRepo;
   private final TenantInviteRepository inviteRepo;
   private final RoleRepository roleRepo;
+  private final PermissionRepository permissionRepo;
+  private final MenuService menuService;
   private final AuditService audit;
   private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -61,11 +65,15 @@ public class UserController {
       TenantRepository tenantRepo,
       TenantInviteRepository inviteRepo,
       RoleRepository roleRepo,
+      PermissionRepository permissionRepo,
+      MenuService menuService,
       AuditService audit) {
     this.repo = repo;
     this.tenantRepo = tenantRepo;
     this.inviteRepo = inviteRepo;
     this.roleRepo = roleRepo;
+    this.permissionRepo = permissionRepo;
+    this.menuService = menuService;
     this.audit = audit;
   }
 
@@ -360,6 +368,41 @@ public class UserController {
   }
 
   /**
+   * Phase 11（ADR-0024 P2 阶段 4）: 菜单数据驱动 —— 当前用户可见菜单树.
+   *
+   * <p>默认清单 ⊕ 租户覆盖（tenant_menu_configs）⊕ 权限过滤（X-User-Permissions）→ 排序树。 由 gateway 经 JWT 鉴权后透传
+   * X-Tenant-Id / X-User-Permissions；租户不存在 → 404。
+   */
+  @Operation(summary = "Get current user menu tree (data-driven · ADR-0024 P2)")
+  @ApiResponse(responseCode = "200", description = "Menu tree (permission-filtered)")
+  @ApiResponse(responseCode = "404", description = "Tenant not found")
+  @GetMapping("/me/menus")
+  public ResponseEntity<?> myMenus(
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-Tenant-Id",
+              required = false)
+          String tenantHeader,
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-User-Permissions",
+              required = false)
+          String permissionsHeader) {
+    Long tenantId = parseUserId(tenantHeader);
+    if (tenantId == null) {
+      return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+          .body(Map.of("error", "TENANT_CONTEXT_REQUIRED", "message", "缺少租户上下文（X-Tenant-Id）"));
+    }
+    Tenant tenant = tenantRepo.findById(tenantId).orElse(null);
+    if (tenant == null) {
+      return ResponseEntity.notFound().build();
+    }
+    List<String> permissions =
+        permissionsHeader == null || permissionsHeader.isBlank()
+            ? List.of()
+            : List.of(permissionsHeader.split(","));
+    return ResponseEntity.ok(menuService.buildMenus(tenantId, tenant.getEdition(), permissions));
+  }
+
+  /**
    * Phase 5 + Phase 8: 给 auth-service Feign 用：按租户 + username 查鉴权视图（含 passwordHash）.
    *
    * <p>仅 service-to-service 调用；通过 gateway 白名单 {@code /api/users/auth/**} 路径实现.
@@ -400,7 +443,8 @@ public class UserController {
                         u.getRoles() == null || u.getRoles().isEmpty()
                             ? List.of("USER")
                             : u.getRoles().stream().map(Role::getCode).toList(),
-                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name())))
+                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+                        permissionRepo.findCodesByUserId(u.getId()))))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
@@ -451,13 +495,14 @@ public class UserController {
     return roleRepo.findByCode(code).orElse(null);
   }
 
-  /** 组装 UserAuthView（含租户编码 + 角色 codes） */
+  /** 组装 UserAuthView（含租户编码 + 角色 codes + 权限 codes · ADR-0024 Phase 2） */
   private UserAuthView toAuthView(User u) {
     Tenant tenant = tenantRepo.findById(u.getTenantId()).orElse(null);
     java.util.List<String> roleCodes =
         u.getRoles() == null || u.getRoles().isEmpty()
             ? List.of("USER")
             : u.getRoles().stream().map(Role::getCode).toList();
+    java.util.List<String> permissionCodes = permissionRepo.findCodesByUserId(u.getId());
     return new UserAuthView(
         u.getId(),
         u.getTenantId(),
@@ -468,7 +513,8 @@ public class UserController {
         u.getDisplayName(),
         u.getPasswordHash(),
         roleCodes,
-        u.getStatus() == null ? "ACTIVE" : u.getStatus().name());
+        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+        permissionCodes);
   }
 
   /**
