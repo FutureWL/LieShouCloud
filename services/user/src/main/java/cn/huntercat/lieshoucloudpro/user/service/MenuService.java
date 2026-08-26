@@ -111,6 +111,8 @@ public class MenuService {
                   new MenuNode(
                       "legal-clients", "/legal/clients", "客户成功", "team", "legal:use", 15, List.of()),
                   new MenuNode(
+                      "legal-calendar", "/legal/calendar", "任务与日程", "calendar", "legal:use", 17, List.of()),
+                  new MenuNode(
                       "legal-knowledge", "/legal/knowledge", "知识资产", "bulb", "legal:use", 20, List.of()),
                   new MenuNode(
                       "legal-growth", "/legal/growth", "专业成长", "rise", "legal:use", 30, List.of()))),
