@@ -5,7 +5,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import cn.huntercat.lieshoucloudpro.auth.feign.TenantAccessClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.UserAuthClient;
+import cn.huntercat.lieshoucloudpro.auth.feign.dto.TenantAccessItem;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.UserAuthView;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginWithCodeRequest;
@@ -31,11 +33,17 @@ public class AuthService {
 
   private final JwtService jwt;
   private final UserAuthClient userClient;
+  private final TenantAccessClient tenantAccessClient;
   private final PasswordEncoder passwordEncoder;
 
-  public AuthService(JwtService jwt, UserAuthClient userClient, PasswordEncoder passwordEncoder) {
+  public AuthService(
+      JwtService jwt,
+      UserAuthClient userClient,
+      TenantAccessClient tenantAccessClient,
+      PasswordEncoder passwordEncoder) {
     this.jwt = jwt;
     this.userClient = userClient;
+    this.tenantAccessClient = tenantAccessClient;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -235,6 +243,37 @@ public class AuthService {
     } catch (Exception e) {
       return null;
     }
+  }
+
+  /**
+   * 集团版子公司切换（Phase 1 §3.2 统一账号）：验证目标租户可访问后重签 token.
+   *
+   * <p>从 user-service {@code /api/tenant-access/user/{userId}} 拿可访问租户列表（主属 + 跨公司授权）， 目标租户不在列表 →
+   * {@link BadCredentialsException}（NO_ACCESS_TO_TENANT）。 切换后 JWT 的 tid/tcode/roles
+   * 更新为目标子公司租户上下文，各服务请求链自然按新租户处理。
+   */
+  public TokenResponse switchTenant(Long userId, String username, String tenantCode) {
+    List<TenantAccessItem> access = tenantAccessClient.tenantAccess(userId, userId);
+    TenantAccessItem target =
+        access.stream()
+            .filter(i -> i.tenantCode() != null && i.tenantCode().equals(tenantCode))
+            .findFirst()
+            .orElseThrow(() -> new BadCredentialsException("NO_ACCESS_TO_TENANT"));
+    List<String> roles =
+        target.roles() == null || target.roles().isEmpty() ? List.of("USER") : target.roles();
+    String accessToken =
+        jwt.generateAccessToken(userId, target.tenantId(), target.tenantCode(), username, roles);
+    String refresh = jwt.generateRefreshToken(userId, username);
+    return new TokenResponse(
+        accessToken,
+        refresh,
+        jwt.getAccessTtlSeconds(),
+        "Bearer",
+        userId,
+        username,
+        target.tenantCode(),
+        target.tenantName(),
+        target.edition());
   }
 
   /** 签发 access + refresh（含租户维度） */
