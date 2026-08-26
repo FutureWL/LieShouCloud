@@ -5,8 +5,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import cn.huntercat.lieshoucloudpro.auth.feign.UserAuthClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.UserAuthView;
+import cn.huntercat.lieshoucloudpro.auth.port.UserAuthPort;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginWithCodeRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.RefreshRequest;
@@ -30,10 +30,10 @@ public class AuthService {
   private static final String DEFAULT_TENANT_CODE = "huntercat";
 
   private final JwtService jwt;
-  private final UserAuthClient userClient;
+  private final UserAuthPort userClient;
   private final PasswordEncoder passwordEncoder;
 
-  public AuthService(JwtService jwt, UserAuthClient userClient, PasswordEncoder passwordEncoder) {
+  public AuthService(JwtService jwt, UserAuthPort userClient, PasswordEncoder passwordEncoder) {
     this.jwt = jwt;
     this.userClient = userClient;
     this.passwordEncoder = passwordEncoder;

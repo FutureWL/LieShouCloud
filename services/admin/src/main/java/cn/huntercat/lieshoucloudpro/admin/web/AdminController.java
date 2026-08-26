@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import cn.huntercat.lieshoucloudpro.admin.feign.UserFeignClient;
 import cn.huntercat.lieshoucloudpro.admin.feign.dto.UserDTO;
+import cn.huntercat.lieshoucloudpro.admin.port.UserQueryPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,9 +31,9 @@ import java.util.Map;
 @Tag(name = "Admin", description = "Cross-service admin endpoints (Feign + circuit breaker)")
 public class AdminController {
 
-  private final UserFeignClient userClient;
+  private final UserQueryPort userClient;
 
-  public AdminController(UserFeignClient userClient) {
+  public AdminController(UserQueryPort userClient) {
     this.userClient = userClient;
   }
 

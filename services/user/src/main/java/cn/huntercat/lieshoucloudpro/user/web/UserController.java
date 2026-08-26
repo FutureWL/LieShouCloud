@@ -1,7 +1,6 @@
 package cn.huntercat.lieshoucloudpro.user.web;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,28 +12,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
-import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
-import cn.huntercat.lieshoucloudpro.user.domain.Role;
-import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
-import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
-import cn.huntercat.lieshoucloudpro.user.domain.TenantInvite;
-import cn.huntercat.lieshoucloudpro.user.domain.TenantInviteRepository;
-import cn.huntercat.lieshoucloudpro.user.domain.TenantRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.User;
-import cn.huntercat.lieshoucloudpro.user.domain.UserRepository;
-import cn.huntercat.lieshoucloudpro.user.service.AuditService;
-import cn.huntercat.lieshoucloudpro.user.web.dto.UserAuthView;
+import cn.huntercat.lieshoucloudpro.user.service.UserBizException;
+import cn.huntercat.lieshoucloudpro.user.service.UserService;
+import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.CreateUserRequest;
+import cn.huntercat.lieshoucloudpro.user.service.dto.UserDtos.UpdateUserRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 
 /**
- * User 服务 REST 端点.
+ * User 服务 REST 端点（HTTP 适配层；业务规则见 {@link UserService}，ARCHITECTURE.md §4.2 下沉）.
  *
  * <p>完整路径含上下文：{@code /api/users/**}（由 gateway 转发）.
  *
@@ -46,27 +37,10 @@ import java.util.Map;
 @Tag(name = "User", description = "User CRUD + lookup endpoints")
 public class UserController {
 
-  private final UserRepository repo;
-  private final TenantRepository tenantRepo;
-  private final TenantInviteRepository inviteRepo;
-  private final RoleRepository roleRepo;
-  private final AuditService audit;
-  private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+  private final UserService users;
 
-  /** 默认租户编码（兼容未显式传租户的调用） · ADR-0022 */
-  private static final String DEFAULT_TENANT_CODE = "huntercat";
-
-  public UserController(
-      UserRepository repo,
-      TenantRepository tenantRepo,
-      TenantInviteRepository inviteRepo,
-      RoleRepository roleRepo,
-      AuditService audit) {
-    this.repo = repo;
-    this.tenantRepo = tenantRepo;
-    this.inviteRepo = inviteRepo;
-    this.roleRepo = roleRepo;
-    this.audit = audit;
+  public UserController(UserService users) {
+    this.users = users;
   }
 
   @Operation(
@@ -83,17 +57,9 @@ public class UserController {
               value = "X-User-Roles",
               required = false)
           String rolesHeader) {
-    Long tid = parseTenantHeader(tenantHeader);
-    // 租户内请求强制过滤（ADR-0022 安全关键）：只能看自己租户的用户
-    if (tid != null) {
-      return ResponseEntity.ok(repo.findByTenantId(tid));
-    }
-    // 无租户上下文 = 跨租户平台查看 → 需 PLATFORM_ADMIN（RBAC · ADR-0024）
-    if (!AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) {
-      return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-          .body(Map.of("error", "FORBIDDEN"));
-    }
-    return ResponseEntity.ok(repo.findAll());
+    return okOrError(
+        () ->
+            users.list(parseTenantHeader(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
   }
 
   @Operation(summary = "Count users")
@@ -107,15 +73,9 @@ public class UserController {
               value = "X-User-Roles",
               required = false)
           String rolesHeader) {
-    Long tid = parseTenantHeader(tenantHeader);
-    if (tid != null) {
-      return ResponseEntity.ok(repo.countByTenantId(tid));
-    }
-    if (!AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) {
-      return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-          .body(Map.of("error", "FORBIDDEN"));
-    }
-    return ResponseEntity.ok(repo.count());
+    return okOrError(
+        () ->
+            users.count(parseTenantHeader(tenantHeader), UserService.isPlatformAdmin(rolesHeader)));
   }
 
   @Operation(
@@ -132,9 +92,8 @@ public class UserController {
               value = "X-Tenant-Id",
               required = false)
           String tenantHeader) {
-    Long tid = parseTenantHeader(tenantHeader);
-    return repo.findById(id)
-        .filter(u -> tenantMatches(u, tid))
+    return users
+        .findById(id, parseTenantHeader(tenantHeader))
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -154,77 +113,8 @@ public class UserController {
       @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false)
           String userIdHeader,
       jakarta.servlet.http.HttpServletRequest req) {
-    Long forcedTenantId = parseTenantHeader(tenantHeader);
-    Tenant tenant = null;
-    String role = "USER";
-    if (body.inviteCode() != null && !body.inviteCode().isBlank()) {
-      // —— 邀请码优先（ADR-0023 Phase 2）：租户/角色来自邀请码 ——
-      TenantInvite invite = inviteRepo.findByCode(body.inviteCode()).orElse(null);
-      if (invite == null || !invite.isValid()) {
-        return ResponseEntity.badRequest().body(Map.of("error", "INVALID_INVITE"));
-      }
-      // 租户内请求强制：邀请码租户必须与请求租户一致，否则拒绝
-      if (forcedTenantId != null && !invite.getTenantId().equals(forcedTenantId)) {
-        return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-            .body(Map.of("error", "INVITE_TENANT_MISMATCH"));
-      }
-      tenant = tenantRepo.findById(invite.getTenantId()).orElse(null);
-      if (tenant == null || tenant.getStatus() != Tenant.Status.ACTIVE) {
-        return ResponseEntity.badRequest().body(Map.of("error", "TENANT_NOT_ACTIVE"));
-      }
-      role = invite.getRole();
-      invite.consume();
-      inviteRepo.save(invite);
-    } else if (forcedTenantId != null) {
-      // —— 租户内请求强制：只能用请求的租户创建（忽略 tenantCode）——
-      tenant = tenantRepo.findById(forcedTenantId).orElse(null);
-      if (tenant == null || tenant.getStatus() != Tenant.Status.ACTIVE) {
-        return ResponseEntity.badRequest().body(Map.of("error", "TENANT_NOT_ACTIVE"));
-      }
-    } else {
-      // —— 常规注册：tenantCode 指定租户（默认 huntercat）——
-      String code =
-          (body.tenantCode() == null || body.tenantCode().isBlank())
-              ? DEFAULT_TENANT_CODE
-              : body.tenantCode();
-      tenant = tenantRepo.findByCode(code).orElse(null);
-      if (tenant == null) {
-        return ResponseEntity.badRequest()
-            .body(Map.of("error", "TENANT_NOT_FOUND", "message", code));
-      }
-    }
-    if (repo.existsByTenantIdAndUsername(tenant.getId(), body.username())) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("error", "USERNAME_TAKEN", "message", body.username()));
-    }
-    User u = new User();
-    u.setTenantId(tenant.getId());
-    u.setUsername(body.username());
-    u.setDisplayName(body.displayName());
-    u.setEmail(body.email());
-    u.setPhone(body.phone());
-    u.setPasswordHash(encoder.encode(body.password()));
-    u.setRoles(List.of(roleByCode(role)));
-    User saved = repo.save(u);
-    audit.recordSuccess(
-        tenant.getId(),
-        parseUserId(userIdHeader),
-        AuditLog.Action.CREATE,
-        "USER",
-        saved.getId(),
-        "创建用户 " + saved.getUsername(),
-        req);
-    // 返回带租户信息（tenantCode/tenantName/tenantEdition）——auth-service 注册后直接签发
-    // JWT 需要；不返回 passwordHash（User 实体的敏感字段不外泄）。
-    return ResponseEntity.ok(
-        Map.of(
-            "id", saved.getId(),
-            "tenantId", saved.getTenantId(),
-            "tenantCode", tenant.getCode(),
-            "tenantName", tenant.getName(),
-            "tenantEdition", tenant.getEdition() == null ? "GENERIC" : tenant.getEdition().name(),
-            "username", saved.getUsername(),
-            "displayName", saved.getDisplayName()));
+    return okOrError(
+        () -> users.create(body, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req));
   }
 
   @Operation(
@@ -247,52 +137,13 @@ public class UserController {
       @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false)
           String userIdHeader,
       jakarta.servlet.http.HttpServletRequest req) {
-    Long tid = parseTenantHeader(tenantHeader);
-    java.util.Optional<User> opt = repo.findById(id);
-    if (opt.isEmpty() || !tenantMatches(opt.get(), tid)) {
-      // 不存在或跨租户 → 404（不泄露存在性）
-      return ResponseEntity.notFound().build();
-    }
-    User u = opt.get();
-    if (body.displayName() != null && !body.displayName().isBlank()) {
-      u.setDisplayName(body.displayName());
-    }
-    if (body.email() != null && !body.email().isBlank()) {
-      u.setEmail(body.email());
-    }
-    if (body.phone() != null && !body.phone().isBlank()) {
-      u.setPhone(body.phone());
-    }
-    if (body.status() != null && !body.status().isBlank()) {
-      try {
-        u.setStatus(User.Status.valueOf(body.status()));
-      } catch (IllegalArgumentException e) {
-        return ResponseEntity.badRequest().body(Map.of("error", "INVALID_STATUS"));
-      }
-    }
-    if (body.roles() != null && body.roles().length > 0) {
-      java.util.List<Role> newRoles =
-          java.util.Arrays.stream(body.roles())
-              .map(this::roleByCode)
-              .filter(java.util.Objects::nonNull)
-              .toList();
-      if (!newRoles.isEmpty()) {
-        u.setRoles(newRoles);
-      }
-    }
-    if (body.password() != null && !body.password().isBlank()) {
-      u.setPasswordHash(encoder.encode(body.password()));
-    }
-    User saved = repo.save(u);
-    audit.recordSuccess(
-        u.getTenantId(),
-        parseUserId(userIdHeader),
-        AuditLog.Action.UPDATE,
-        "USER",
-        saved.getId(),
-        "更新用户 " + saved.getUsername(),
-        req);
-    return ResponseEntity.ok(saved);
+    return okOrError(
+        () ->
+            users
+                .update(id, body, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req)
+                .map(u -> (Object) u)
+                .orElse(null),
+        true);
   }
 
   @Operation(summary = "Delete user by id")
@@ -301,7 +152,7 @@ public class UserController {
     @ApiResponse(responseCode = "404", description = "User not found")
   })
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(
+  public ResponseEntity<?> delete(
       @Parameter(description = "User id") @PathVariable Long id,
       @org.springframework.web.bind.annotation.RequestHeader(
               value = "X-Tenant-Id",
@@ -310,41 +161,15 @@ public class UserController {
       @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false)
           String userIdHeader,
       jakarta.servlet.http.HttpServletRequest req) {
-    Long tid = parseTenantHeader(tenantHeader);
-    java.util.Optional<User> opt = repo.findById(id);
-    if (opt.isEmpty() || !tenantMatches(opt.get(), tid)) {
-      return ResponseEntity.notFound().build();
-    }
-    User u = opt.get();
-    repo.deleteById(id);
-    audit.recordSuccess(
-        u.getTenantId(),
-        parseUserId(userIdHeader),
-        AuditLog.Action.DELETE,
-        "USER",
-        id,
-        "删除用户 " + u.getUsername(),
-        req);
-    return ResponseEntity.noContent().build();
-  }
-
-  // ============================================================
-  // 租户上下文工具（ADR-0022 安全）
-  // ============================================================
-
-  /** 解析 X-Tenant-Id header（非法/空 → null = 平台上下文） */
-  private Long parseTenantHeader(String value) {
-    if (value == null || value.isBlank()) return null;
     try {
-      return Long.parseLong(value);
-    } catch (NumberFormatException e) {
-      return null;
+      boolean deleted =
+          users
+              .delete(id, parseTenantHeader(tenantHeader), parseUserId(userIdHeader), req)
+              .isPresent();
+      return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    } catch (UserBizException e) {
+      return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getError()));
     }
-  }
-
-  /** 资源是否属于当前租户（无租户上下文 = 平台管理，放行） */
-  private boolean tenantMatches(User u, Long tenantHeader) {
-    return tenantHeader == null || u.getTenantId().equals(tenantHeader);
   }
 
   /** 给 admin-service Feign 用：根据 username 查 User（不含密码 hash）. */
@@ -354,7 +179,8 @@ public class UserController {
   @GetMapping("/by-username/{username}")
   public ResponseEntity<User> byUsername(
       @Parameter(description = "Username", example = "futurewl") @PathVariable String username) {
-    return repo.findByUsername(username)
+    return users
+        .findByUsername(username)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -375,33 +201,7 @@ public class UserController {
       @Parameter(description = "Tenant code", example = "huntercat") @PathVariable
           String tenantCode,
       @Parameter(description = "Username") @PathVariable String username) {
-    Tenant tenant = tenantRepo.findByCode(tenantCode).orElse(null);
-    if (tenant == null) {
-      return ResponseEntity.notFound().build();
-    }
-    // Phase 8: 租户被停用 → 阻断该租户所有登录
-    if (tenant.getStatus() != Tenant.Status.ACTIVE) {
-      return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-          .body(Map.of("error", "TENANT_DISABLED", "tenantCode", tenantCode));
-    }
-    return repo.findByTenantIdAndUsername(tenant.getId(), username)
-        .map(
-            u ->
-                ResponseEntity.ok(
-                    new UserAuthView(
-                        u.getId(),
-                        u.getTenantId(),
-                        tenant.getCode(),
-                        tenant.getName(),
-                        tenant.getEdition() == null ? null : tenant.getEdition().name(),
-                        u.getUsername(),
-                        u.getDisplayName(),
-                        u.getPasswordHash(),
-                        u.getRoles() == null || u.getRoles().isEmpty()
-                            ? List.of("USER")
-                            : u.getRoles().stream().map(Role::getCode).toList(),
-                        u.getStatus() == null ? "ACTIVE" : u.getStatus().name())))
-        .orElseGet(() -> ResponseEntity.notFound().build());
+    return okOrError(() -> users.authByTenantAndUsername(tenantCode, username));
   }
 
   /**
@@ -415,9 +215,7 @@ public class UserController {
   @GetMapping("/auth/by-phone/{phone}")
   public ResponseEntity<?> authByPhone(
       @Parameter(description = "Phone", example = "13800000000") @PathVariable String phone) {
-    return repo.findByPhone(phone)
-        .map(u -> ResponseEntity.ok(toAuthView(u)))
-        .orElseGet(() -> ResponseEntity.notFound().build());
+    return okOrError(() -> users.authByPhone(phone));
   }
 
   /**
@@ -431,44 +229,7 @@ public class UserController {
   @GetMapping("/auth/by-email/{email}")
   public ResponseEntity<?> authByEmail(
       @Parameter(description = "Email", example = "user@huntercat.cn") @PathVariable String email) {
-    return repo.findByEmail(email)
-        .map(u -> ResponseEntity.ok(toAuthView(u)))
-        .orElseGet(() -> ResponseEntity.notFound().build());
-  }
-
-  /** 按角色 code 查 Role 实体（不存在返回 null） */
-  /** X-User-Id header → Long（gateway 从 JWT uid 注入）；空/非法 → null */
-  private static Long parseUserId(String header) {
-    if (header == null || header.isBlank()) return null;
-    try {
-      return Long.parseLong(header.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
-
-  private Role roleByCode(String code) {
-    return roleRepo.findByCode(code).orElse(null);
-  }
-
-  /** 组装 UserAuthView（含租户编码 + 角色 codes） */
-  private UserAuthView toAuthView(User u) {
-    Tenant tenant = tenantRepo.findById(u.getTenantId()).orElse(null);
-    java.util.List<String> roleCodes =
-        u.getRoles() == null || u.getRoles().isEmpty()
-            ? List.of("USER")
-            : u.getRoles().stream().map(Role::getCode).toList();
-    return new UserAuthView(
-        u.getId(),
-        u.getTenantId(),
-        tenant == null ? null : tenant.getCode(),
-        tenant == null ? null : tenant.getName(),
-        tenant == null || tenant.getEdition() == null ? null : tenant.getEdition().name(),
-        u.getUsername(),
-        u.getDisplayName(),
-        u.getPasswordHash(),
-        roleCodes,
-        u.getStatus() == null ? "ACTIVE" : u.getStatus().name());
+    return okOrError(() -> users.authByEmail(email));
   }
 
   /**
@@ -485,14 +246,9 @@ public class UserController {
   @PostMapping("/{id}/login-marker")
   public ResponseEntity<Void> markLastLogin(
       @Parameter(description = "User id", example = "1") @PathVariable Long id) {
-    java.util.Optional<User> opt = repo.findById(id);
-    if (opt.isEmpty()) {
-      return ResponseEntity.notFound().build();
-    }
-    User u = opt.get();
-    u.setLastLoginAt(Instant.now());
-    repo.save(u);
-    return ResponseEntity.noContent().build();
+    return users.markLastLogin(id)
+        ? ResponseEntity.noContent().build()
+        : ResponseEntity.notFound().build();
   }
 
   /** Phase 5: 占位 health 端点（被 admin-service 通过 Feign + circuit breaker 调用）. */
@@ -502,24 +258,46 @@ public class UserController {
     return Map.of("status", "UP", "service", "user");
   }
 
-  /**
-   * Phase 5 + Phase 8: CreateUserRequest DTO（tenantCode 可选默认 huntercat；inviteCode 可选则租户/角色来自邀请码）
-   */
-  public record CreateUserRequest(
-      @jakarta.validation.constraints.NotBlank String username,
-      @jakarta.validation.constraints.NotBlank String displayName,
-      @jakarta.validation.constraints.NotBlank String password,
-      String email,
-      String phone,
-      String tenantCode,
-      String inviteCode) {}
+  // ============================================================
+  // 工具
+  // ============================================================
 
-  /** Phase 7: UpdateUserRequest DTO（内联；字段均可选，传入才更新；password 传入才改） */
-  public record UpdateUserRequest(
-      String displayName,
-      String email,
-      String phone,
-      String status,
-      String[] roles,
-      String password) {}
+  /** 解析 X-Tenant-Id header（非法/空 → null = 平台上下文） */
+  private Long parseTenantHeader(String value) {
+    if (value == null || value.isBlank()) return null;
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /** X-User-Id header → Long（gateway 从 JWT uid 注入）；空/非法 → null */
+  private static Long parseUserId(String header) {
+    if (header == null || header.isBlank()) return null;
+    try {
+      return Long.parseLong(header.trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /** 执行业务并统一转译 UserBizException → HTTP 状态 + 错误码。 */
+  private static <T> ResponseEntity<T> okOrError(java.util.function.Supplier<T> action) {
+    return okOrError(action, false);
+  }
+
+  /** {@code notFoundAsNull=true} 时业务返回 null（如 update 的 Optional.empty）→ 404。 */
+  private static <T> ResponseEntity<T> okOrError(
+      java.util.function.Supplier<T> action, boolean notFoundAsNull) {
+    try {
+      T result = action.get();
+      if (notFoundAsNull && result == null) {
+        return ResponseEntity.notFound().build();
+      }
+      return ResponseEntity.ok(result);
+    } catch (UserBizException e) {
+      return ResponseEntity.status(e.getStatus()).body((T) Map.of("error", e.getError()));
+    }
+  }
 }

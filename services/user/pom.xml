@@ -129,6 +129,11 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- exec classifier：主 jar 保持普通可依赖形态（admin/auth/approval monolith
+                                 适配以 user 为库依赖，fat jar 的 BOOT-INF/ 布局不可被依赖——同 approval PR #26） -->
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

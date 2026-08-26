@@ -25,8 +25,11 @@ public class AuditService {
     this.repo = repo;
   }
 
-  /** 从请求提取来源 IP（X-Forwarded-For 优先，回退 remoteAddr）与 UA */
+  /** 从请求提取来源 IP（X-Forwarded-For 优先，回退 remoteAddr）与 UA；无请求上下文（monolith 内部调用）→ null */
   public static String clientIp(HttpServletRequest req) {
+    if (req == null) {
+      return null;
+    }
     String xff = req.getHeader("X-Forwarded-For");
     if (xff != null && !xff.isBlank()) {
       return xff.split(",")[0].trim();
@@ -36,6 +39,9 @@ public class AuditService {
   }
 
   public static String userAgent(HttpServletRequest req) {
+    if (req == null) {
+      return null;
+    }
     String ua = req.getHeader("User-Agent");
     return (ua == null || ua.isBlank()) ? null : (ua.length() > 255 ? ua.substring(0, 255) : ua);
   }

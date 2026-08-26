@@ -6,8 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalAuditLog;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequest;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequestRepository;
-import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
+import cn.huntercat.lieshoucloudpro.approval.port.UserQueryPort;
 import cn.huntercat.lieshoucloudpro.approval.web.ApprovalForbiddenException;
 import cn.huntercat.lieshoucloudpro.approval.web.InvalidTypeException;
 import java.math.BigDecimal;
@@ -26,13 +26,13 @@ public class ApprovalRequestService {
 
   private final ApprovalRequestRepository repo;
   private final ApprovalAuditService auditService;
-  private final UserQueryClient userClient;
+  private final UserQueryPort userClient;
   private final ApprovalNotifier notifier;
 
   public ApprovalRequestService(
       ApprovalRequestRepository repo,
       ApprovalAuditService auditService,
-      UserQueryClient userClient,
+      UserQueryPort userClient,
       ApprovalNotifier notifier) {
     this.repo = repo;
     this.auditService = auditService;

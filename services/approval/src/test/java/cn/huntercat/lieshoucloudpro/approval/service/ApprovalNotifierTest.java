@@ -17,8 +17,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequest;
-import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
+import cn.huntercat.lieshoucloudpro.approval.port.UserQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +29,7 @@ import java.util.Optional;
 class ApprovalNotifierTest {
 
   @Mock private JavaMailSender mailSender;
-  @Mock private UserQueryClient users;
+  @Mock private UserQueryPort users;
 
   private ApprovalNotifier notifier;
 
