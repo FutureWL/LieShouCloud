@@ -9,9 +9,61 @@ on:
 # 单个 job 失败不要影响另一个
 jobs:
   # ============================================================
+  # 变更检测（docs-only / backend / frontend）——
+  # 只改文档 → 跳过全部重活 job；只改前端 → 跳过 backend（反之亦然），
+  # 避免无关代码也跑全量 Maven/Turbo（skipped 计为成功，不影响分支保护）
+  # ============================================================
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.detect.outputs.docs_only }}
+      backend: ${{ steps.detect.outputs.backend }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD || true)
+          fi
+          echo "changed:"; echo "$CHANGED"
+          # docs-only：所有文件都是文档
+          if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qvE '\.(md|txt)$|^\.ai/|^docs/|^LICENSE$'; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          # 模块判定
+          backend=false; frontend=false
+          echo "$CHANGED" | grep -qE '^services/|pom\.xml$|docker-compose|^scripts/|\.env\.example$|Makefile$' && backend=true
+          echo "$CHANGED" | grep -qE '^apps/|^packages/|pnpm-lock\.yaml$|^package\.json$|^turbo\.json$|^pnpm-workspace\.yaml$|\.nvmrc$' && frontend=true
+          echo "$CHANGED" | grep -qE '^\.github/' && { backend=true; frontend=true; }
+          # 兜底：改了未知路径 → 两端都跑
+          if echo "$CHANGED" | grep -qvE '\.(md|txt)$|^\.ai/|^docs/|^LICENSE$|^services/|pom\.xml$|docker-compose|^scripts/|\.env\.example$|Makefile$|^apps/|^packages/|pnpm-lock\.yaml$|^package\.json$|^turbo\.json$|^pnpm-workspace\.yaml$|\.nvmrc$|^\.github/'; then
+            backend=true; frontend=true
+          fi
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+
+  # ============================================================
   # 后端编译 + 单测（mvn verify 跑 test）+ spotless 自动 check
   # ============================================================
   backend-services:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.backend == 'true'
     name: Backend (Java 21 + Maven multi-module)
     runs-on: ubuntu-latest
     services:
@@ -74,6 +126,8 @@ jobs:
   # 四端：admin + desktop + mobile + mini-program（typecheck + build）
   # ============================================================
   frontend:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.frontend == 'true'
     name: Frontend monorepo (Turbo)
     runs-on: ubuntu-latest
     steps:
@@ -110,6 +164,8 @@ jobs:
   # 前端 lint：ESLint + Prettier check（apps/admin + shared packages）
   # ============================================================
   frontend-lint:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.frontend == 'true'
     name: Frontend monorepo lint
     runs-on: ubuntu-latest
     steps:
@@ -145,6 +201,8 @@ jobs:
   # 前端测试：Vitest + Jest（四端）
   # ============================================================
   frontend-test:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.frontend == 'true'
     name: Frontend monorepo test (all clients)
     runs-on: ubuntu-latest
     steps:
@@ -230,3 +288,18 @@ jobs:
       # monorepo 全 node deps 扫描
       - name: pnpm audit (production deps only, high+ severity)
         run: pnpm audit --prod --audit-level=high
+
+  # ============================================================
+  # docs-only 轻量检查：只改文档时秒级通过，替代全量 CI 反馈
+  # ============================================================
+  docs-check:
+    name: docs (lightweight)
+    needs: changes
+    if: needs.changes.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docs-only PR
+        run: |
+          echo "📄 docs-only PR — 跳过后端/前端重活 job"
+          git diff --name-only HEAD~1 HEAD || true

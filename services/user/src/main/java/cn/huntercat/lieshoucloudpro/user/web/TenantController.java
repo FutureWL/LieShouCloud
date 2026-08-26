@@ -164,6 +164,20 @@ public class TenantController {
       return ResponseEntity.badRequest().body(Map.of("error", "INVALID_EDITION"));
     }
     Tenant t = new Tenant(body.name(), body.code(), edition);
+    try {
+      applyCompanyProfile(
+          t,
+          body.creditCode(),
+          body.legalPerson(),
+          body.registeredCapital(),
+          body.establishedAt(),
+          body.industry(),
+          body.parentTenantId(),
+          repo);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "INVALID_PARENT_TENANT", "message", e.getMessage()));
+    }
     Tenant saved = repo.save(t);
     audit.recordSuccess(
         parseLong(tenantHeader),
@@ -220,6 +234,20 @@ public class TenantController {
                 } catch (IllegalArgumentException e) {
                   return ResponseEntity.badRequest().body(Map.of("error", "INVALID_EDITION"));
                 }
+              }
+              try {
+                applyCompanyProfile(
+                    t,
+                    body.creditCode(),
+                    body.legalPerson(),
+                    body.registeredCapital(),
+                    body.establishedAt(),
+                    body.industry(),
+                    body.parentTenantId(),
+                    repo);
+              } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "INVALID_PARENT_TENANT", "message", e.getMessage()));
               }
               Tenant saved = repo.save(t);
               audit.recordSuccess(
@@ -304,7 +332,14 @@ public class TenantController {
   public record CreateTenantRequest(
       @jakarta.validation.constraints.NotBlank String name,
       @jakarta.validation.constraints.NotBlank String code,
-      String edition) {}
+      String edition,
+      // 子公司档案（集团版 · V9 · 均可选）
+      String creditCode,
+      String legalPerson,
+      java.math.BigDecimal registeredCapital,
+      java.time.LocalDate establishedAt,
+      String industry,
+      Long parentTenantId) {}
 
   /** 租户自助开通请求体（公开端点 · SaaS 增长路径 · issue #24） */
   public record RegisterTenantRequest(
@@ -316,7 +351,17 @@ public class TenantController {
       String email) {}
 
   /** Phase 8: UpdateTenantRequest DTO（内联；name/status/edition 均可选） */
-  public record UpdateTenantRequest(String name, String status, String edition) {}
+  public record UpdateTenantRequest(
+      String name,
+      String status,
+      String edition,
+      // 子公司档案（集团版 · V9 · 均可选，null 不改动）
+      String creditCode,
+      String legalPerson,
+      java.math.BigDecimal registeredCapital,
+      java.time.LocalDate establishedAt,
+      String industry,
+      Long parentTenantId) {}
 
   /** 解析版别（空 → GENERIC；非法 → null 由调用方判定） */
   private static Tenant.Edition parseEdition(String edition) {
@@ -325,6 +370,32 @@ public class TenantController {
       return Tenant.Edition.valueOf(edition);
     } catch (IllegalArgumentException e) {
       return null;
+    }
+  }
+
+  /**
+   * 应用子公司档案字段（集团版 · V9）。null 字段不动；parentTenantId 非空时校验目标租户存在（不存在 → 400）。 校验失败抛
+   * IllegalArgumentException，由调用方 catch 返回 400。
+   */
+  private static void applyCompanyProfile(
+      Tenant t,
+      String creditCode,
+      String legalPerson,
+      java.math.BigDecimal registeredCapital,
+      java.time.LocalDate establishedAt,
+      String industry,
+      Long parentTenantId,
+      TenantRepository repo) {
+    if (creditCode != null && !creditCode.isBlank()) t.setCreditCode(creditCode.trim());
+    if (legalPerson != null && !legalPerson.isBlank()) t.setLegalPerson(legalPerson.trim());
+    if (registeredCapital != null) t.setRegisteredCapital(registeredCapital);
+    if (establishedAt != null) t.setEstablishedAt(establishedAt);
+    if (industry != null && !industry.isBlank()) t.setIndustry(industry.trim());
+    if (parentTenantId != null) {
+      if (!repo.existsById(parentTenantId)) {
+        throw new IllegalArgumentException("parentTenantId 不存在: " + parentTenantId);
+      }
+      t.setParentTenantId(parentTenantId);
     }
   }
 }

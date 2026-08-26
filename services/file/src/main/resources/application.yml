@@ -4,7 +4,7 @@ spring:
       - "optional:nacos:lieshoucloud-common.yml?group=DEFAULT_GROUP&refreshEnabled=true"
       - "optional:nacos:${spring.application.name}.yml?group=DEFAULT_GROUP&refreshEnabled=true"
   application:
-    name: lieshoucloud-approval
+    name: lieshoucloud-file
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   jpa:
@@ -18,15 +18,15 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
-    # 迁移脚本独立目录（db/approval-migration）：**不在 classpath:db/migration 树内**，
-    # 避免被依赖本模块的服务（finance/inventory monolith 适配 · ARCHITECTURE.md §4.2）
-    # 递归扫描时与各自 V1 版本冲突
-    locations: classpath:db/approval-migration
-    # 独立 history 表（ADR-0025 模式 · ADR-0032）
-    table: flyway_schema_history_approval
+    locations: classpath:db/migration
+    table: flyway_schema_history_file
     baseline-on-migrate: true
     baseline-version: 0
     validate-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
@@ -41,9 +41,6 @@ spring:
         username: ${NACOS_USERNAME:}
         password: ${NACOS_PASSWORD:}
       config:
-        # Phase 9 · P1-5 Nacos Config（ADR-0029）
-        #   - 默认关闭（NACOS_CONFIG_ENABLED=false）→ 行为与接入前完全一致，启动零依赖
-        #   - 开启后加载 optional import（dataId 缺失不启动失败；refresh 支持热重载）
         import-check:
           enabled: false
         enabled: ${NACOS_CONFIG_ENABLED:false}
@@ -55,7 +52,7 @@ spring:
         refresh-enabled: true
 
 server:
-  port: ${APPROVAL_PORT:8087}
+  port: ${FILE_PORT:8090}
   servlet:
     context-path: /
 
@@ -66,7 +63,7 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
-  packages-to-scan: cn.huntercat.lieshoucloudpro.approval
+  packages-to-scan: cn.huntercat.lieshoucloudpro.file
   show-actuator: false
 
 management:

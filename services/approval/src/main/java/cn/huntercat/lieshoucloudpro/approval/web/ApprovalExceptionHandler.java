@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import cn.huntercat.lieshoucloudpro.approval.service.ApproverResolveException;
 import cn.huntercat.lieshoucloudpro.approval.web.ApprovalController.NotFoundException;
 import java.util.Map;
 
@@ -30,9 +31,8 @@ public class ApprovalExceptionHandler {
         .body(Map.of("error", "INVALID_TYPE", "message", e.getMessage()));
   }
 
-  @ExceptionHandler(ApprovalController.ApproverResolveException.class)
-  public ResponseEntity<Map<String, String>> onApproverResolve(
-      ApprovalController.ApproverResolveException e) {
+  @ExceptionHandler(ApproverResolveException.class)
+  public ResponseEntity<Map<String, String>> onApproverResolve(ApproverResolveException e) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(Map.of("error", "APPROVER_RESOLVE_FAILED", "message", e.getMessage()));
   }
