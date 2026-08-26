@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import jakarta.servlet.http.HttpServletRequest;
 
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
+import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Role;
 import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
@@ -44,6 +45,8 @@ public class UserService {
   private final TenantRepository tenantRepo;
   private final TenantInviteRepository inviteRepo;
   private final RoleRepository roleRepo;
+  private final PermissionRepository permissionRepo;
+  private final MenuService menuService;
   private final AuditService audit;
   private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -52,11 +55,15 @@ public class UserService {
       TenantRepository tenantRepo,
       TenantInviteRepository inviteRepo,
       RoleRepository roleRepo,
+      PermissionRepository permissionRepo,
+      MenuService menuService,
       AuditService audit) {
     this.repo = repo;
     this.tenantRepo = tenantRepo;
     this.inviteRepo = inviteRepo;
     this.roleRepo = roleRepo;
+    this.permissionRepo = permissionRepo;
+    this.menuService = menuService;
     this.audit = audit;
   }
 
@@ -287,13 +294,14 @@ public class UserService {
     return opt.isPresent();
   }
 
-  /** 组装鉴权视图（含租户编码 + 角色 codes）。 */
+  /** 组装鉴权视图（含租户编码 + 角色 codes + 权限 codes · ADR-0024 Phase 2）。 */
   public UserAuthView toAuthView(User u) {
     Tenant tenant = tenantRepo.findById(u.getTenantId()).orElse(null);
     List<String> roleCodes =
         u.getRoles() == null || u.getRoles().isEmpty()
             ? List.of("USER")
             : u.getRoles().stream().map(Role::getCode).toList();
+    List<String> permissionCodes = permissionRepo.findCodesByUserId(u.getId());
     return new UserAuthView(
         u.getId(),
         u.getTenantId(),
@@ -304,7 +312,30 @@ public class UserService {
         u.getDisplayName(),
         u.getPasswordHash(),
         roleCodes,
-        u.getStatus() == null ? "ACTIVE" : u.getStatus().name());
+        u.getStatus() == null ? "ACTIVE" : u.getStatus().name(),
+        permissionCodes);
+  }
+
+  /**
+   * 当前用户菜单树（ADR-0024 P2 · 数据驱动）：默认清单 ⊕ 租户覆盖 ⊕ 权限过滤 → 排序树。
+   *
+   * @throws UserBizException 401 TENANT_CONTEXT_REQUIRED（缺租户上下文）/ 404（租户不存在）
+   */
+  public Object buildMenus(Long tenantId, String permissionsHeader) {
+    if (tenantId == null) {
+      throw new UserBizException(
+          HttpStatus.UNAUTHORIZED.value(), "TENANT_CONTEXT_REQUIRED", "缺少租户上下文（X-Tenant-Id）");
+    }
+    Tenant tenant = tenantRepo.findById(tenantId).orElse(null);
+    if (tenant == null) {
+      throw new UserBizException(
+          HttpStatus.NOT_FOUND.value(), "TENANT_NOT_FOUND", String.valueOf(tenantId));
+    }
+    List<String> permissions =
+        permissionsHeader == null || permissionsHeader.isBlank()
+            ? List.of()
+            : List.of(permissionsHeader.split(","));
+    return menuService.buildMenus(tenantId, tenant.getEdition(), permissions);
   }
 
   // ============================================================

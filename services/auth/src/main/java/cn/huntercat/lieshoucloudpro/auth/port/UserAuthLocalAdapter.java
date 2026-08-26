@@ -142,7 +142,8 @@ public class UserAuthLocalAdapter implements UserAuthPort {
         v.displayName(),
         v.passwordHash(),
         v.roles(),
-        v.status());
+        v.status(),
+        v.permissions());
   }
 
   /** 构造与 msa 等价的 FeignException（body 带标准化错误码，供 AuthService.extractError 透传）。 */
