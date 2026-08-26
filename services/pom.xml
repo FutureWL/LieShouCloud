@@ -18,6 +18,7 @@
         <module>admin</module>
         <module>auth</module>
         <module>approval</module>
+        <module>file</module>
     </modules>
 
     <properties>
