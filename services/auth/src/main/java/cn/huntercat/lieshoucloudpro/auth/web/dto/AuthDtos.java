@@ -24,6 +24,10 @@ public final class AuthDtos {
   public record RefreshRequest(
       @Schema(description = "Refresh token from /login response") @NotBlank String refreshToken) {}
 
+  @Schema(description = "Switch tenant request body（集团版子公司切换）")
+  public record SwitchTenantRequest(
+      @Schema(description = "目标子公司租户编码", example = "nanchang") @NotBlank String tenantCode) {}
+
   @Schema(description = "Token response (Phase 5: access + refresh + meta)")
   public record TokenResponse(
       @Schema(description = "JWT access token (Bearer)") String accessToken,
