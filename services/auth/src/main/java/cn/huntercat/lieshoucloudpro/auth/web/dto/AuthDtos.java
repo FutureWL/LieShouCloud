@@ -86,4 +86,52 @@ public final class AuthDtos {
       @Schema(description = "Phone or email", example = "13800000000") @NotBlank String target,
       @Schema(description = "6-digit code", example = "123456") @NotBlank String code,
       @Schema(description = "New password") @NotBlank String newPassword) {}
+
+  // ============================================================
+  // 可信身份登录（SECURE WORKSPACE · OAuth 授权码演示通道 · 愿景「Sign in with ChatGPT」）
+  // ============================================================
+
+  /** 可信身份通道描述（OAuth provider 注册表） */
+  @Schema(description = "可信身份通道（OAuth provider）")
+  public record OAuthProvider(
+      @Schema(description = "通道标识", example = "chatgpt") String provider,
+      @Schema(description = "展示名称", example = "Sign in with ChatGPT") String name,
+      @Schema(description = "理念说明（不保存密码 / 组织成员核验）") String hint,
+      @Schema(description = "授权范围") java.util.List<String> permissions) {}
+
+  @Schema(description = "OAuth 授权请求（可信身份通道 · 演示：provider 已完成身份验证）")
+  public record OAuthAuthorizeRequest(
+      @Schema(description = "通道标识", example = "chatgpt") @NotBlank String provider,
+      @Schema(
+              description =
+                  "组织成员用户名（演示语义：可信身份 provider 已核验该成员身份，此处绑定组织账号）",
+              example = "admin")
+          @NotBlank
+          String memberUsername,
+      @Schema(description = "租户编码（默认 huntercat）", example = "jxlkas")
+          String tenantCode) {}
+
+  @Schema(description = "OAuth 授权响应（一次性授权码）")
+  public record OAuthAuthorizeResponse(
+      @Schema(description = "一次性授权码（5 分钟有效 · 仅可用一次）", example = "oc_xxxxxxxx") String code,
+      @Schema(description = "防 CSRF state（演示语义）", example = "st_xxxxxxxx") String state,
+      @Schema(description = "授权码有效期（秒）", example = "300") long expiresInSeconds,
+      @Schema(description = "成员用户名", example = "admin") String memberUsername,
+      @Schema(description = "租户编码", example = "jxlkas") String tenantCode,
+      @Schema(description = "组织成员核验结果（AUTH REQUIRED）", example = "VERIFIED") String memberStatus) {}
+
+  @Schema(description = "OAuth 授权码换取令牌请求")
+  public record OAuthTokenRequest(
+      @Schema(description = "一次性授权码", example = "oc_xxxxxxxx") @NotBlank String code,
+      @Schema(description = "租户编码", example = "jxlkas") String tenantCode) {}
+
+  /** 安全会话记录（上次安全登录 · 内存保留最近 10 条/用户） */
+  @Schema(description = "安全会话记录（上次安全登录）")
+  public record SecureSession(
+      @Schema(description = "可信身份通道", example = "chatgpt") String provider,
+      @Schema(description = "成员用户名", example = "admin") String username,
+      @Schema(description = "租户编码", example = "jxlkas") String tenantCode,
+      @Schema(description = "角色", example = "LEGAL_ADMIN") java.util.List<String> roles,
+      @Schema(description = "登录时间") java.time.Instant at,
+      @Schema(description = "组织成员核验结果", example = "VERIFIED") String memberStatus) {}
 }

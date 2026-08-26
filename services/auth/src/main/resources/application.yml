@@ -114,6 +114,11 @@ resilience4j:
         limitForPeriod: 5
         limitRefreshPeriod: 1m
         timeoutDuration: 0s
+      # 可信身份 OAuth 通道（授权/换令牌）：10 次/分钟
+      authOAuth:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1m
+        timeoutDuration: 0s
 
 logging:
   level:

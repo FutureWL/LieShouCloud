@@ -108,6 +108,51 @@ public class AuthService {
   }
 
   // ============================================================
+  // 可信身份登录（SECURE WORKSPACE · OAuth 通道）
+  // ============================================================
+
+  /**
+   * 组织成员核验（AUTH REQUIRED）：返回成员状态 ACTIVE / DISABLED / NOT_FOUND.
+   *
+   * <p>供 OAuth 授权前置校验：可信身份 provider 已完成身份验证后，核对组织成员资格与有效期。
+   */
+  public String verifyMember(String tenantCode, String username) {
+    String tcode = (tenantCode == null || tenantCode.isBlank()) ? DEFAULT_TENANT_CODE : tenantCode;
+    try {
+      UserAuthView u = userClient.findByTenantAndUsername(tcode, username);
+      if (u == null || u.id() == null) return "NOT_FOUND";
+      return u.status() == null ? "ACTIVE" : u.status();
+    } catch (Exception e) {
+      return "NOT_FOUND";
+    }
+  }
+
+  /**
+   * 可信身份登录（OAuth token 阶段）：按成员用户名签发 JWT（不校验密码——
+   * 身份已由可信身份 provider 验证，密码通道不参与，符合「不保存密码」理念）。
+   *
+   * <p>仍执行组织成员核验：成员不存在 / 非 ACTIVE 拒绝签发。
+   */
+  public TokenResponse oauthLogin(String tenantCode, String username) {
+    String tcode = (tenantCode == null || tenantCode.isBlank()) ? DEFAULT_TENANT_CODE : tenantCode;
+    UserAuthView user;
+    try {
+      user = userClient.findByTenantAndUsername(tcode, username);
+    } catch (Exception e) {
+      throw new UsernameNotFoundException("USER_NOT_FOUND: " + username);
+    }
+    if (user == null || user.id() == null) {
+      // OAuth 通道不依赖密码（身份已由可信身份 provider 验证 · 不保存密码理念）
+      throw new UsernameNotFoundException("USER_NOT_FOUND: " + username);
+    }
+    String status = user.status() == null ? "ACTIVE" : user.status();
+    if (!"ACTIVE".equals(status)) {
+      throw new BadCredentialsException("ACCOUNT_" + status);
+    }
+    return issueTokens(user, tcode);
+  }
+
+  // ============================================================
   // Phase 8 · 认证体系扩展（ADR-0023）：验证码登录 / 注册 / 重置密码
   // ============================================================
 
