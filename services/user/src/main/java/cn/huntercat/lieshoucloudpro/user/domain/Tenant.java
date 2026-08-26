@@ -95,6 +95,33 @@ public class Tenant {
   @Schema(description = "Last update timestamp", accessMode = Schema.AccessMode.READ_ONLY)
   private Instant updatedAt;
 
+  // ---------- 子公司档案（集团管理行业版 · V9 · 均可空） ----------
+
+  @Column(name = "credit_code", length = 64)
+  @Schema(description = "统一社会信用代码（工商档案 · 集团版）", example = "91360103MA7XXXXXXX")
+  private String creditCode;
+
+  @Column(name = "legal_person", length = 64)
+  @Schema(description = "法定代表人（工商档案 · 集团版）", example = "张三")
+  private String legalPerson;
+
+  @Column(name = "registered_capital", precision = 14, scale = 2)
+  @Schema(description = "注册资本（万元 · 集团版）", example = "1000.00")
+  private java.math.BigDecimal registeredCapital;
+
+  @Column(name = "established_at")
+  @Schema(description = "成立日期（集团版）", example = "2020-01-01")
+  private java.time.LocalDate establishedAt;
+
+  @Column(name = "industry", length = 64)
+  @Schema(description = "所属行业（集团版）", example = "科技")
+  private String industry;
+
+  /** 集团归属：子公司 → 集团总部租户 id；总部/独立租户 = null（V9） */
+  @Column(name = "parent_tenant_id")
+  @Schema(description = "集团归属（上级租户 id；集团总部=null）", example = "2")
+  private Long parentTenantId;
+
   public Tenant() {}
 
   public Tenant(String name, String code) {
@@ -162,5 +189,53 @@ public class Tenant {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public String getCreditCode() {
+    return creditCode;
+  }
+
+  public void setCreditCode(String creditCode) {
+    this.creditCode = creditCode;
+  }
+
+  public String getLegalPerson() {
+    return legalPerson;
+  }
+
+  public void setLegalPerson(String legalPerson) {
+    this.legalPerson = legalPerson;
+  }
+
+  public java.math.BigDecimal getRegisteredCapital() {
+    return registeredCapital;
+  }
+
+  public void setRegisteredCapital(java.math.BigDecimal registeredCapital) {
+    this.registeredCapital = registeredCapital;
+  }
+
+  public java.time.LocalDate getEstablishedAt() {
+    return establishedAt;
+  }
+
+  public void setEstablishedAt(java.time.LocalDate establishedAt) {
+    this.establishedAt = establishedAt;
+  }
+
+  public String getIndustry() {
+    return industry;
+  }
+
+  public void setIndustry(String industry) {
+    this.industry = industry;
+  }
+
+  public Long getParentTenantId() {
+    return parentTenantId;
+  }
+
+  public void setParentTenantId(Long parentTenantId) {
+    this.parentTenantId = parentTenantId;
   }
 }
