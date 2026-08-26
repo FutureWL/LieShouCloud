@@ -55,18 +55,51 @@ export async function request<T>(opts: ApiRequestOptions): Promise<T> {
     : "";
 
   const url = `${baseUrl}/api${opts.path}${qs}`;
-  const res = await fetch(url, {
-    method: opts.method,
-    headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: opts.method,
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch (e) {
+    // 网络层失败（断网 / DNS / TLS）——无 status，调用方按「网络错误」处理
+    throw new ApiError(e instanceof Error ? e.message : "NETWORK_ERROR");
+  }
 
   if (res.status === 401) {
     unauthorizedHandler?.();
-    throw new Error("UNAUTHORIZED");
+    throw new ApiError("UNAUTHORIZED", 401, "UNAUTHORIZED");
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    // 尝试解析后端 ErrorResponse { error, message }（ADR 统一错误体）
+    let message = `HTTP ${res.status}: ${res.statusText}`;
+    let code: string | undefined;
+    try {
+      const body = (await res.json()) as { error?: string; message?: string };
+      if (body.message) message = body.message;
+      if (body.error) code = body.error;
+    } catch {
+      // 非 JSON 错误体，用默认消息
+    }
+    throw new ApiError(message, res.status, code);
+  }
   return res.json() as Promise<T>;
 }
 
-export const __PLACEHOLDER_API_CLIENT__ = true;
+/** 结构化 API 错误：status=HTTP 状态码（网络错误无 status）、code=后端业务码 */
+export class ApiError extends Error {
+  status?: number;
+  code?: string;
+
+  constructor(message: string, status?: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export function isApiError(e: unknown): e is ApiError {
+  return e instanceof ApiError;
+}
