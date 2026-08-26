@@ -80,7 +80,7 @@ spring:
         - id: crm-route
           uri: lb://lieshoucloud-crm
           predicates:
-            - Path=/api/customers/**,/api/leads/**
+            - Path=/api/customers/**,/api/leads/**,/api/contacts/**,/api/contracts/**,/api/members/**
         # Phase 9：进销存（商品 + 出入库流水 · 强制 X-Tenant-Id）
         - id: inventory-route
           uri: lb://lieshoucloud-inventory
