@@ -18,8 +18,8 @@ import java.time.Instant;
 /**
  * 文件元数据实体（file-service 独占 · 磁盘存储，DB 仅元数据）.
  *
- * <p>多租户：{@code tenant_id} NOT NULL + 应用层强制过滤；{@code is_deleted} 软删（回收站语义：软删后不可下载）。
- * 磁盘文件名（{@code stored_name}）为 UUID，避免用户文件名路径注入。
+ * <p>多租户：{@code tenant_id} NOT NULL + 应用层强制过滤；{@code is_deleted} 软删（回收站语义：软删后不可下载）。 磁盘文件名（{@code
+ * stored_name}）为 UUID，避免用户文件名路径注入。
  */
 @Entity
 @Table(
@@ -86,7 +86,8 @@ public class FileEntity {
 
   public FileEntity() {}
 
-  public FileEntity(Long tenantId, String originalName, String storedName, String contentType, long size) {
+  public FileEntity(
+      Long tenantId, String originalName, String storedName, String contentType, long size) {
     this.tenantId = tenantId;
     this.originalName = originalName;
     this.storedName = storedName;

@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -46,7 +45,8 @@ public class FileController {
   private final FileRepository repo;
   private final Path storeDir;
 
-  public FileController(FileRepository repo, @Value("${file.store.dir:/data/files}") String storeDir) {
+  public FileController(
+      FileRepository repo, @Value("${file.store.dir:/data/files}") String storeDir) {
     this.repo = repo;
     this.storeDir = Paths.get(storeDir);
   }
@@ -78,18 +78,16 @@ public class FileController {
     } catch (Exception e) {
       throw new FileStorageException("文件写入失败: " + e.getMessage(), e);
     }
-    FileEntity f =
-        new FileEntity(tid, original, stored, file.getContentType(), file.getSize());
+    FileEntity f = new FileEntity(tid, original, stored, file.getContentType(), file.getSize());
     f.setCreatedBy(parseUserId(userIdHeader));
     f.setUpdatedBy(parseUserId(userIdHeader));
     return ResponseEntity.ok(repo.save(f));
   }
 
-  @Operation(
-      summary = "Download / preview file content",
-      description = "流式返回文件字节；跨租户或已软删 → 404。")
+  @Operation(summary = "Download / preview file content", description = "流式返回文件字节；跨租户或已软删 → 404。")
   @GetMapping("/{id}/content")
-  public ResponseEntity<Resource> content(@PathVariable Long id,
+  public ResponseEntity<Resource> content(
+      @PathVariable Long id,
       @RequestHeader(value = HDR_TENANT_ID, required = false) String tenantHeader) {
     Long tid = requireTenant(tenantHeader);
     FileEntity f = findTenantFile(id, tid);
@@ -103,18 +101,20 @@ public class FileController {
     } catch (Exception e) {
       throw new FileStorageException("文件读取失败: " + e.getMessage(), e);
     }
-    String contentType = f.getContentType() != null ? f.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-    String encoded = URLEncoder.encode(f.getOriginalName(), StandardCharsets.UTF_8).replace("+", "%20");
+    String contentType =
+        f.getContentType() != null ? f.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+    String encoded =
+        URLEncoder.encode(f.getOriginalName(), StandardCharsets.UTF_8).replace("+", "%20");
     return ResponseEntity.ok()
         .contentType(MediaType.parseMediaType(contentType))
-        .header(HttpHeaders.CONTENT_DISPOSITION,
-            "inline; filename*=UTF-8''" + encoded)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encoded)
         .body(resource);
   }
 
   @Operation(summary = "Get file metadata (tenant-scoped)")
   @GetMapping("/{id}")
-  public ResponseEntity<FileEntity> metadata(@PathVariable Long id,
+  public ResponseEntity<FileEntity> metadata(
+      @PathVariable Long id,
       @RequestHeader(value = HDR_TENANT_ID, required = false) String tenantHeader) {
     Long tid = requireTenant(tenantHeader);
     return ResponseEntity.ok(findTenantFile(id, tid));
@@ -130,7 +130,8 @@ public class FileController {
 
   @Operation(summary = "Delete file (soft, recycle bin semantics)")
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable Long id,
+  public ResponseEntity<Void> delete(
+      @PathVariable Long id,
       @RequestHeader(value = HDR_TENANT_ID, required = false) String tenantHeader) {
     Long tid = requireTenant(tenantHeader);
     FileEntity f = findTenantFile(id, tid);

@@ -47,7 +47,8 @@ class FileRepositoryTest extends PostgresTestSupport {
     repo.save(deleted);
 
     List<FileEntity> r = repo.findTenantFiles(1L);
-    assertThat(r).extracting(FileEntity::getOriginalName)
+    assertThat(r)
+        .extracting(FileEntity::getOriginalName)
         .containsExactly("租户1文件")
         .doesNotContain("租户2文件", "已删");
     assertThat(t2.getTenantId()).isEqualTo(2L);

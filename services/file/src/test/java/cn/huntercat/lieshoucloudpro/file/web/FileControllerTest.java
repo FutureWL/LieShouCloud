@@ -57,7 +57,8 @@ class FileControllerTest extends PostgresTestSupport {
   @Test
   @DisplayName("无 X-Tenant-Id → 401（upload / list / get / content / delete）")
   void tenantRequired_allEndpoints() throws Exception {
-    MockMultipartFile file = new MockMultipartFile("file", "a.txt", "text/plain", "hello".getBytes());
+    MockMultipartFile file =
+        new MockMultipartFile("file", "a.txt", "text/plain", "hello".getBytes());
     mockMvc.perform(multipart("/api/files").file(file)).andExpect(status().isUnauthorized());
     mockMvc.perform(get("/api/files")).andExpect(status().isUnauthorized());
     mockMvc.perform(get("/api/files/1")).andExpect(status().isUnauthorized());
@@ -75,14 +76,16 @@ class FileControllerTest extends PostgresTestSupport {
   @DisplayName("upload：元数据正确 + created_by 取 X-User-Id")
   void upload_returnsMetadata() throws Exception {
     when(repo.save(any(FileEntity.class)))
-        .thenAnswer(inv -> {
-          FileEntity f = inv.getArgument(0);
-          f.setId(9L);
-          return f;
-        });
+        .thenAnswer(
+            inv -> {
+              FileEntity f = inv.getArgument(0);
+              f.setId(9L);
+              return f;
+            });
     MockMultipartFile file =
         new MockMultipartFile("file", "委托合同.pdf", "application/pdf", "pdf-bytes".getBytes());
-    mockMvc.perform(multipart("/api/files").file(file).header(TID, "1").header(UID, "42"))
+    mockMvc
+        .perform(multipart("/api/files").file(file).header(TID, "1").header(UID, "42"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(9))
         .andExpect(jsonPath("$.tenantId").value(1))
@@ -110,9 +113,14 @@ class FileControllerTest extends PostgresTestSupport {
     java.nio.file.Path dir = java.nio.file.Paths.get("target/test-files/1");
     java.nio.file.Files.createDirectories(dir);
     java.nio.file.Files.write(dir.resolve("abc123"), "pdf-bytes".getBytes());
-    mockMvc.perform(get("/api/files/1/content").header(TID, "1"))
+    mockMvc
+        .perform(get("/api/files/1/content").header(TID, "1"))
         .andExpect(status().isOk())
-        .andExpect(header().string("Content-Disposition", "inline; filename*=UTF-8''%E5%A7%94%E6%89%98%E5%90%88%E5%90%8C.pdf"));
+        .andExpect(
+            header()
+                .string(
+                    "Content-Disposition",
+                    "inline; filename*=UTF-8''%E5%A7%94%E6%89%98%E5%90%88%E5%90%8C.pdf"));
   }
 
   @Test
