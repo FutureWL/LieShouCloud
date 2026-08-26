@@ -25,4 +25,5 @@ public record UserAuthView(
     String displayName,
     String passwordHash,
     List<String> roles,
-    String status) {}
+    String status,
+    List<String> permissions) {}

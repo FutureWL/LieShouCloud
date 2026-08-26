@@ -31,6 +31,7 @@ public class JwtService {
   private static final String CLAIM_TID = "tid";
   private static final String CLAIM_TCODE = "tcode";
   private static final String CLAIM_ROLES = "roles";
+  private static final String CLAIM_PERMISSIONS = "permissions";
   private static final String CLAIM_TYPE = "typ";
 
   private final String secret;
@@ -60,9 +61,14 @@ public class JwtService {
     this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
   }
 
-  /** 生成 access token (typ=access, 含租户 tid/tcode · ADR-0022). */
+  /** 生成 access token (typ=access, 含租户 tid/tcode · ADR-0022；权限码 permissions · ADR-0024 Phase 2). */
   public String generateAccessToken(
-      Long userId, Long tenantId, String tenantCode, String username, List<String> roles) {
+      Long userId,
+      Long tenantId,
+      String tenantCode,
+      String username,
+      List<String> roles,
+      List<String> permissions) {
     Instant now = Instant.now();
     return Jwts.builder()
         .issuer(issuer)
@@ -76,7 +82,9 @@ public class JwtService {
                 CLAIM_TCODE,
                 tenantCode == null ? "" : tenantCode,
                 CLAIM_ROLES,
-                roles,
+                roles == null ? List.of() : roles,
+                CLAIM_PERMISSIONS,
+                permissions == null ? List.of() : permissions,
                 CLAIM_TYPE,
                 "access"))
         .issuedAt(Date.from(now))
