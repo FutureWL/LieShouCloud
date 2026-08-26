@@ -14,8 +14,8 @@ import java.time.Instant;
 /**
  * 租户菜单覆盖（菜单数据驱动 · ADR-0024 Phase 2 阶段 4）.
  *
- * <p>平台默认菜单清单（MenuService.DEFAULT_MENUS）⊕ 租户覆盖（本表：enabled/rename/sort）
- * → 按用户权限过滤 → GET /api/users/me/menus。客户差异"配数据"而非"发代码"。
+ * <p>平台默认菜单清单（MenuService.DEFAULT_MENUS）⊕ 租户覆盖（本表：enabled/rename/sort） → 按用户权限过滤 → GET
+ * /api/users/me/menus。客户差异"配数据"而非"发代码"。
  */
 @Entity
 @Table(name = "tenant_menu_configs")

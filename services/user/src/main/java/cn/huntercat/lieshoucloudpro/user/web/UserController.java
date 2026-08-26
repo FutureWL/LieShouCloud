@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import cn.huntercat.lieshoucloudpro.user.domain.AuditLog;
-import cn.huntercat.lieshoucloudpro.user.domain.Permission;
 import cn.huntercat.lieshoucloudpro.user.domain.PermissionRepository;
 import cn.huntercat.lieshoucloudpro.user.domain.Role;
 import cn.huntercat.lieshoucloudpro.user.domain.RoleRepository;
@@ -371,15 +370,17 @@ public class UserController {
   /**
    * Phase 11（ADR-0024 P2 阶段 4）: 菜单数据驱动 —— 当前用户可见菜单树.
    *
-   * <p>默认清单 ⊕ 租户覆盖（tenant_menu_configs）⊕ 权限过滤（X-User-Permissions）→ 排序树。
-   * 由 gateway 经 JWT 鉴权后透传 X-Tenant-Id / X-User-Permissions；租户不存在 → 404。
+   * <p>默认清单 ⊕ 租户覆盖（tenant_menu_configs）⊕ 权限过滤（X-User-Permissions）→ 排序树。 由 gateway 经 JWT 鉴权后透传
+   * X-Tenant-Id / X-User-Permissions；租户不存在 → 404。
    */
   @Operation(summary = "Get current user menu tree (data-driven · ADR-0024 P2)")
   @ApiResponse(responseCode = "200", description = "Menu tree (permission-filtered)")
   @ApiResponse(responseCode = "404", description = "Tenant not found")
   @GetMapping("/me/menus")
   public ResponseEntity<?> myMenus(
-      @org.springframework.web.bind.annotation.RequestHeader(value = "X-Tenant-Id", required = false)
+      @org.springframework.web.bind.annotation.RequestHeader(
+              value = "X-Tenant-Id",
+              required = false)
           String tenantHeader,
       @org.springframework.web.bind.annotation.RequestHeader(
               value = "X-User-Permissions",

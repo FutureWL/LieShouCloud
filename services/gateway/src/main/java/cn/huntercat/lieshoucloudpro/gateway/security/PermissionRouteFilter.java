@@ -1,29 +1,30 @@
 package cn.huntercat.lieshoucloudpro.gateway.security;
 
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
-import reactor.core.publisher.Mono;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
 
 import java.util.List;
 import java.util.Map;
+import reactor.core.publisher.Mono;
 
 /**
  * 权限路由过滤器（平台基础层 · ADR-0024 Phase 2 阶段 3 接口级鉴权）.
  *
- * <p>在 {@link AuthenticationFilter} 之后执行：按路径 → 权限码映射校验当前用户的
- * {@code X-User-Permissions}（来自 JWT permissions claim）。菜单隐藏与接口拒绝从此共用同一数据源。
+ * <p>在 {@link AuthenticationFilter} 之后执行：按路径 → 权限码映射校验当前用户的 {@code X-User-Permissions}（来自 JWT
+ * permissions claim）。菜单隐藏与接口拒绝从此共用同一数据源。
  *
  * <p>安全默认（渐进迁移，不破坏存量）：
+ *
  * <ul>
- *   <li>白名单路径（/api/auth/**、服务间 /api/users/auth/** 等）→ 放行</li>
- *   <li>{@code X-User-Permissions} 为空（旧 token 无 permissions claim）→ 放行（兼容旧登录）</li>
- *   <li>路径未配置权限映射 → 放行（避免误拦未迁移端点）</li>
- *   <li>路径有映射且用户权限码不足 → 403 FORBIDDEN</li>
+ *   <li>白名单路径（/api/auth/**、服务间 /api/users/auth/** 等）→ 放行
+ *   <li>{@code X-User-Permissions} 为空（旧 token 无 permissions claim）→ 放行（兼容旧登录）
+ *   <li>路径未配置权限映射 → 放行（避免误拦未迁移端点）
+ *   <li>路径有映射且用户权限码不足 → 403 FORBIDDEN
  * </ul>
  *
  * <p>路径 → 权限码映射（粗粒度域级；最长前缀匹配）：后续可外置 Nacos 配置。
@@ -77,24 +78,32 @@ public class PermissionRouteFilter implements GlobalFilter, Ordered {
     }
 
     // 旧 token（无 permissions claim → header 为空）→ 放行（渐进迁移兼容）
-    String permsHeader =
-        exchange.getRequest().getHeaders().getFirst(HDR_X_USER_PERMISSIONS);
+    String permsHeader = exchange.getRequest().getHeaders().getFirst(HDR_X_USER_PERMISSIONS);
     if (permsHeader == null || permsHeader.isBlank()) {
       return chain.filter(exchange);
     }
 
     List<String> perms = List.of(permsHeader.split(","));
     if (!perms.contains(required)) {
-      return onError(exchange, HttpStatus.FORBIDDEN, "{\"error\":\"FORBIDDEN\",\"message\":\"缺少权限 " + required + "\"}");
+      return onError(
+          exchange,
+          HttpStatus.FORBIDDEN,
+          "{\"error\":\"FORBIDDEN\",\"message\":\"缺少权限 " + required + "\"}");
     }
     return chain.filter(exchange);
   }
 
   private Mono<Void> onError(ServerWebExchange exchange, HttpStatus status, String body) {
     exchange.getResponse().setStatusCode(status);
-    exchange.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+    exchange
+        .getResponse()
+        .getHeaders()
+        .setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
     byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-    return exchange.getResponse().writeWith(reactor.core.publisher.Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
+    return exchange
+        .getResponse()
+        .writeWith(
+            reactor.core.publisher.Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
   }
 
   /** 与 AuthenticationFilter 相同的白名单（服务间调用 / 公开端点不校验权限） */

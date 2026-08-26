@@ -102,14 +102,10 @@ public final class AuthDtos {
   @Schema(description = "OAuth 授权请求（可信身份通道 · 演示：provider 已完成身份验证）")
   public record OAuthAuthorizeRequest(
       @Schema(description = "通道标识", example = "chatgpt") @NotBlank String provider,
-      @Schema(
-              description =
-                  "组织成员用户名（演示语义：可信身份 provider 已核验该成员身份，此处绑定组织账号）",
-              example = "admin")
+      @Schema(description = "组织成员用户名（演示语义：可信身份 provider 已核验该成员身份，此处绑定组织账号）", example = "admin")
           @NotBlank
           String memberUsername,
-      @Schema(description = "租户编码（默认 huntercat）", example = "jxlkas")
-          String tenantCode) {}
+      @Schema(description = "租户编码（默认 huntercat）", example = "jxlkas") String tenantCode) {}
 
   @Schema(description = "OAuth 授权响应（一次性授权码）")
   public record OAuthAuthorizeResponse(

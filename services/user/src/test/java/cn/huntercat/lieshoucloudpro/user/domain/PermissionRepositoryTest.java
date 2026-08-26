@@ -45,9 +45,7 @@ class PermissionRepositoryTest extends PostgresTestSupport {
   @Test
   @DisplayName("按用户查权限码：角色并集（USER + TENANT_ADMIN）去重排序")
   void findCodesByUserId_union() {
-    User u =
-        users.save(
-            withRole(new User(1L, "perm-alice", "Alice", "hash"), "USER"));
+    User u = users.save(withRole(new User(1L, "perm-alice", "Alice", "hash"), "USER"));
     u.setRoles(
         new java.util.ArrayList<>(
             List.of(

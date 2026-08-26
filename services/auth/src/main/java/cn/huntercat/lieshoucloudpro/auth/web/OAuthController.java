@@ -35,8 +35,7 @@ import java.util.Map;
 /**
  * 可信身份登录（SECURE WORKSPACE · OAuth 授权码演示通道）.
  *
- * <p>愿景「Sign in with ChatGPT」：可信身份 provider 完成身份验证 → 一次性授权码 →
- * 换取组织 JWT 会话（不保存密码 · 组织成员核验 · 安全会话可见）。
+ * <p>愿景「Sign in with ChatGPT」：可信身份 provider 完成身份验证 → 一次性授权码 → 换取组织 JWT 会话（不保存密码 · 组织成员核验 · 安全会话可见）。
  *
  * @see .ai/decisions/0017-spring-security-jwt.md（JWT 体系不变，OAuth 为其入口之一）
  */
@@ -53,7 +52,9 @@ public class OAuthController {
     this.jwt = jwt;
   }
 
-  @Operation(summary = "List trusted identity providers", description = "可信身份通道注册表（Sign in with ChatGPT 等）。")
+  @Operation(
+      summary = "List trusted identity providers",
+      description = "可信身份通道注册表（Sign in with ChatGPT 等）。")
   @ApiResponse(responseCode = "200", description = "Provider list")
   @GetMapping("/providers")
   public List<OAuthProvider> providers() {
@@ -65,7 +66,9 @@ public class OAuthController {
       description = "演示通道：可信身份 provider 已完成身份验证，绑定组织成员并签发一次性授权码。正式接入时由真实 provider 接管。")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "一次性授权码"),
-    @ApiResponse(responseCode = "400", description = "UNKNOWN_PROVIDER / MEMBER_NOT_FOUND / MEMBER_DISABLED"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "UNKNOWN_PROVIDER / MEMBER_NOT_FOUND / MEMBER_DISABLED"),
     @ApiResponse(responseCode = "429", description = "RATE_LIMITED")
   })
   @PostMapping("/authorize")
@@ -74,7 +77,9 @@ public class OAuthController {
     return oauth.authorize(req.provider(), req.memberUsername(), req.tenantCode());
   }
 
-  @Operation(summary = "Exchange auth code for token (OAuth authorization code)", description = "一次性授权码 → 组织 JWT 会话 + 记录安全会话。")
+  @Operation(
+      summary = "Exchange auth code for token (OAuth authorization code)",
+      description = "一次性授权码 → 组织 JWT 会话 + 记录安全会话。")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "access/refresh token + membership"),
     @ApiResponse(responseCode = "401", description = "INVALID_OAUTH_CODE / ACCOUNT_*"),
@@ -87,7 +92,9 @@ public class OAuthController {
     return oauth.token(req.code(), req.tenantCode());
   }
 
-  @Operation(summary = "Current user secure sessions", description = "上次安全登录（最近 10 条 · 身份×职责分别管理可见角色）。")
+  @Operation(
+      summary = "Current user secure sessions",
+      description = "上次安全登录（最近 10 条 · 身份×职责分别管理可见角色）。")
   @SecurityRequirement(name = "bearerAuth")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Secure session list"),

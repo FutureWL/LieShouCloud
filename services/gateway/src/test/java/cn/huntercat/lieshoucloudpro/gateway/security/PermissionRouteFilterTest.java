@@ -16,30 +16,41 @@ class PermissionRouteFilterTest {
   @DisplayName("业务域路径 → 对应权限码（legal/crm/inventory/finance/approval）")
   void businessDomains() {
     assertThat(PermissionRouteFilter.requiredPermission("/api/legal/cases")).isEqualTo("legal:use");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/legal/cases/1/gates")).isEqualTo("legal:use");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/legal/cases/1/gates"))
+        .isEqualTo("legal:use");
     assertThat(PermissionRouteFilter.requiredPermission("/api/crm/customers")).isEqualTo("crm:use");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/inventory/products")).isEqualTo("inventory:use");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/finance/ledger")).isEqualTo("finance:use");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/approval/requests")).isEqualTo("approval:use");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/inventory/products"))
+        .isEqualTo("inventory:use");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/finance/ledger"))
+        .isEqualTo("finance:use");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/approval/requests"))
+        .isEqualTo("approval:use");
   }
 
   @Test
   @DisplayName("平台管理路径 → tenant:manage（tenants/roles/audit）")
   void platformAdmin() {
     assertThat(PermissionRouteFilter.requiredPermission("/api/tenants")).isEqualTo("tenant:manage");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/tenants/1/invites")).isEqualTo("tenant:manage");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/tenants/1/invites"))
+        .isEqualTo("tenant:manage");
     assertThat(PermissionRouteFilter.requiredPermission("/api/roles")).isEqualTo("tenant:manage");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/audit/logs")).isEqualTo("tenant:manage");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/audit/logs"))
+        .isEqualTo("tenant:manage");
   }
 
   @Test
   @DisplayName("iot 细粒度：配置类子路径 → iot:config，监控 → iot:monitor（最长前缀优先）")
   void iotGranular() {
-    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/devices")).isEqualTo("iot:config");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/products")).isEqualTo("iot:config");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/rules/1")).isEqualTo("iot:config");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/cockpit")).isEqualTo("iot:monitor");
-    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/alerts")).isEqualTo("iot:monitor");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/devices"))
+        .isEqualTo("iot:config");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/products"))
+        .isEqualTo("iot:config");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/rules/1"))
+        .isEqualTo("iot:config");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/cockpit"))
+        .isEqualTo("iot:monitor");
+    assertThat(PermissionRouteFilter.requiredPermission("/api/iot/alerts"))
+        .isEqualTo("iot:monitor");
   }
 
   @Test

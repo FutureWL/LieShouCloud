@@ -9,8 +9,7 @@ import java.util.List;
 /**
  * 权限点 Repository（RBAC · ADR-0024 Phase 2 · 平台基础层）.
  *
- * <p>提供按用户查权限码（user → roles → permissions 并集）与按角色查权限码，供鉴权视图与
- * 菜单裁决复用。
+ * <p>提供按用户查权限码（user → roles → permissions 并集）与按角色查权限码，供鉴权视图与 菜单裁决复用。
  */
 public interface PermissionRepository extends JpaRepository<Permission, Long> {
 

@@ -21,9 +21,8 @@ import java.util.List;
 /**
  * 权限点实体（RBAC · ADR-0024 Phase 2 · 平台基础层）.
  *
- * <p>菜单可见性与接口鉴权共用同一权限码数据源：{@code code} 形如 {@code <域>:<资源>:<动作>}（如
- * {@code legal:use} / {@code tenant:manage}）。角色-权限经 {@code role_permissions} 多对多关联；
- * 用户权限 = 用户角色并集。
+ * <p>菜单可见性与接口鉴权共用同一权限码数据源：{@code code} 形如 {@code <域>:<资源>:<动作>}（如 {@code legal:use} / {@code
+ * tenant:manage}）。角色-权限经 {@code role_permissions} 多对多关联； 用户权限 = 用户角色并集。
  */
 @Entity
 @Table(

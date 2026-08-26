@@ -19,14 +19,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 可信身份登录（SECURE WORKSPACE · OAuth 授权码演示通道）.
  *
- * <p>愿景「Sign in with ChatGPT」：可信身份 provider 完成身份验证后，本服务签发组织会话。
- * 语义落地：\n
- * - 不保存密码：OAuth 通道全程无密码字段（身份由 provider 验证）；\n
- * - 组织成员核验（AUTH REQUIRED）：authorize/token 均核验成员状态 ACTIVE；\n
- * - 安全会话：内存保留每用户最近 10 条安全登录记录（上次安全登录可见）；\n
- * - 一次性授权码：5 分钟有效，仅可兑换一次（防重放）。\n
- * <p>演示边界：正式接入真实 OAuth provider（ChatGPT/企业微信等）时，授权端点由 provider
- * 接管（本类 authorize 为演示通道：假设 provider 已完成身份验证，直接绑定组织成员）。
+ * <p>愿景「Sign in with ChatGPT」：可信身份 provider 完成身份验证后，本服务签发组织会话。 语义落地：\n - 不保存密码：OAuth 通道全程无密码字段（身份由
+ * provider 验证）；\n - 组织成员核验（AUTH REQUIRED）：authorize/token 均核验成员状态 ACTIVE；\n - 安全会话：内存保留每用户最近 10
+ * 条安全登录记录（上次安全登录可见）；\n - 一次性授权码：5 分钟有效，仅可兑换一次（防重放）。\n
+ *
+ * <p>演示边界：正式接入真实 OAuth provider（ChatGPT/企业微信等）时，授权端点由 provider 接管（本类 authorize 为演示通道：假设 provider
+ * 已完成身份验证，直接绑定组织成员）。
  */
 @Service
 public class OAuthService {
@@ -52,19 +50,14 @@ public class OAuthService {
   public List<OAuthProvider> providers() {
     return List.of(
         new OAuthProvider(
-            "chatgpt",
-            "Sign in with ChatGPT",
-            "可信身份通道 · 不保存密码 · 组织成员核验",
-            List.of("member:verify")),
+            "chatgpt", "Sign in with ChatGPT", "可信身份通道 · 不保存密码 · 组织成员核验", List.of("member:verify")),
         new OAuthProvider(
-            "wecom",
-            "企业微信扫码",
-            "组织成员关系（AUTH REQUIRED）· 登录即进入受控工作区",
-            List.of("member:verify")));
+            "wecom", "企业微信扫码", "组织成员关系（AUTH REQUIRED）· 登录即进入受控工作区", List.of("member:verify")));
   }
 
   /** 授权：核验组织成员 → 签发一次性授权码。 */
-  public OAuthAuthorizeResponse authorize(String provider, String memberUsername, String tenantCode) {
+  public OAuthAuthorizeResponse authorize(
+      String provider, String memberUsername, String tenantCode) {
     if (providers().stream().noneMatch(p -> p.provider().equals(provider))) {
       throw new BadCredentialsException("UNKNOWN_PROVIDER");
     }
@@ -73,7 +66,10 @@ public class OAuthService {
       throw new BadCredentialsException("MEMBER_" + status);
     }
     String code = "oc_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    codes.put(code, new OAuthCode(provider, tenantCode, memberUsername, Instant.now().plusSeconds(CODE_TTL_SECONDS)));
+    codes.put(
+        code,
+        new OAuthCode(
+            provider, tenantCode, memberUsername, Instant.now().plusSeconds(CODE_TTL_SECONDS)));
     return new OAuthAuthorizeResponse(
         code,
         "st_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
@@ -122,14 +118,16 @@ public class OAuthService {
     return List.copyOf(q);
   }
 
-  private void recordSession(Long userId, String provider, String username, String tenantCode, List<String> roles) {
-    SecureSession s = new SecureSession(
-        provider,
-        username,
-        tenantCode,
-        roles == null ? List.of() : roles,
-        Instant.now(),
-        "VERIFIED");
+  private void recordSession(
+      Long userId, String provider, String username, String tenantCode, List<String> roles) {
+    SecureSession s =
+        new SecureSession(
+            provider,
+            username,
+            tenantCode,
+            roles == null ? List.of() : roles,
+            Instant.now(),
+            "VERIFIED");
     sessions.compute(
         userId,
         (k, q) -> {
@@ -141,5 +139,6 @@ public class OAuthService {
   }
 
   /** 授权码承载信息（不可变）。 */
-  private record OAuthCode(String provider, String tenantCode, String username, Instant expiresAt) {}
+  private record OAuthCode(
+      String provider, String tenantCode, String username, Instant expiresAt) {}
 }

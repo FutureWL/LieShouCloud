@@ -79,8 +79,7 @@ public class AuthService {
     }
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
-    List<String> permissions =
-        user.permissions() == null ? List.of() : user.permissions();
+    List<String> permissions = user.permissions() == null ? List.of() : user.permissions();
     String access =
         jwt.generateAccessToken(
             user.id(), user.tenantId(), tenantCode, user.username(), roles, permissions);
@@ -128,8 +127,7 @@ public class AuthService {
   }
 
   /**
-   * 可信身份登录（OAuth token 阶段）：按成员用户名签发 JWT（不校验密码——
-   * 身份已由可信身份 provider 验证，密码通道不参与，符合「不保存密码」理念）。
+   * 可信身份登录（OAuth token 阶段）：按成员用户名签发 JWT（不校验密码—— 身份已由可信身份 provider 验证，密码通道不参与，符合「不保存密码」理念）。
    *
    * <p>仍执行组织成员核验：成员不存在 / 非 ACTIVE 拒绝签发。
    */
@@ -294,10 +292,10 @@ public class AuthService {
             : tenantCode;
     List<String> roles =
         user.roles() == null || user.roles().isEmpty() ? List.of("USER") : user.roles();
-    List<String> permissions =
-        user.permissions() == null ? List.of() : user.permissions();
+    List<String> permissions = user.permissions() == null ? List.of() : user.permissions();
     String access =
-        jwt.generateAccessToken(user.id(), user.tenantId(), tcode, user.username(), roles, permissions);
+        jwt.generateAccessToken(
+            user.id(), user.tenantId(), tcode, user.username(), roles, permissions);
     String refresh = jwt.generateRefreshToken(user.id(), user.username());
     markLastLogin(user.id());
     return new TokenResponse(

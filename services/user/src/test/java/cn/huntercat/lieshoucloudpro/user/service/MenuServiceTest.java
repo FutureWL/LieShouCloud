@@ -1,8 +1,5 @@
 package cn.huntercat.lieshoucloudpro.user.service;
 
-import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
-import cn.huntercat.lieshoucloudpro.user.domain.TenantMenuConfig;
-import cn.huntercat.lieshoucloudpro.user.domain.TenantMenuConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,14 +8,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import cn.huntercat.lieshoucloudpro.user.domain.Tenant;
+import cn.huntercat.lieshoucloudpro.user.domain.TenantMenuConfig;
+import cn.huntercat.lieshoucloudpro.user.domain.TenantMenuConfigRepository;
 import java.util.List;
-import java.util.Map;
 
 /**
  * MenuService 单测（菜单数据驱动 · ADR-0024 Phase 2 阶段 4）.
  *
- * <p>覆盖：版别基菜单（legal 置顶今日作战台）、权限过滤、租户覆盖（enabled/rename/sort）、
- * 子菜单全过滤整组隐藏。
+ * <p>覆盖：版别基菜单（legal 置顶今日作战台）、权限过滤、租户覆盖（enabled/rename/sort）、 子菜单全过滤整组隐藏。
  */
 class MenuServiceTest {
 
@@ -56,7 +54,8 @@ class MenuServiceTest {
   @DisplayName("权限过滤：无 legal:use → legal 组消失；tenant:manage 保留租户组")
   void permissionFilter() {
     when(configs.findByTenantId(1L)).thenReturn(List.of());
-    var menus = service.buildMenus(1L, Tenant.Edition.GENERIC, List.of("tenant:manage", "user:list"));
+    var menus =
+        service.buildMenus(1L, Tenant.Edition.GENERIC, List.of("tenant:manage", "user:list"));
     assertThat(menus.stream().map(MenuService.MenuNode::key))
         .contains("tenant", "user")
         .doesNotContain("legal", "customer", "iot");
