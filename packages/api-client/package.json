@@ -1,16 +1,26 @@
 {
   "name": "@lieshoucloud/api-client",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./generated": "./src/generated.ts",
+    "./generated.legal": "./src/generated.legal.ts",
+    "./generated.file": "./src/generated.file.ts"
   },
   "scripts": {
-    "gen:api": "openapi-typescript http://localhost:9000/v3/api-docs/user -o ./src/generated.ts",
-    "gen:api:admin": "openapi-typescript http://localhost:9000/v3/api-docs/admin -o ./src/generated.admin.ts",
+    "gen:api": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/user -o ./src/generated.ts",
+    "gen:api:admin": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/admin -o ./src/generated.admin.ts",
+    "gen:api:crm": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/crm -o ./src/generated.crm.ts",
+    "gen:api:inventory": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/inventory -o ./src/generated.inventory.ts",
+    "gen:api:finance": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/finance -o ./src/generated.finance.ts",
+    "gen:api:approval": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/approval -o ./src/generated.approval.ts",
+    "gen:api:legal": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/legal -o ./src/generated.legal.ts",
+    "gen:api:file": "openapi-typescript ${API_BASE:-http://localhost:9000}/v3/api-docs/file -o ./src/generated.file.ts",
+    "gen:api:all": "pnpm gen:api && pnpm gen:api:admin && pnpm gen:api:crm && pnpm gen:api:inventory && pnpm gen:api:finance && pnpm gen:api:approval && pnpm gen:api:legal && pnpm gen:api:file",
     "lint": "echo \"lint: api-client ESLint config TODO Phase 2\" && exit 0",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit"
@@ -18,5 +28,8 @@
   "devDependencies": {
     "openapi-typescript": "^7.4.4",
     "typescript": "5.6.3"
-  }
+  },
+  "files": [
+    "src"
+  ]
 }

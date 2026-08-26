@@ -64,6 +64,12 @@ export interface TokenResponse {
   tokenType: "Bearer";
   userId: number;
   username: string;
+  /** 租户编码（tcode claim） */
+  tenantCode?: string;
+  /** 租户展示名 */
+  tenantName?: string;
+  /** 租户版别：GENERIC | LAYER | LEGALMIND | ZHIYE | JMZZ（ADR-0035/0036） */
+  tenantEdition?: string;
 }
 
 export interface CurrentUser {
@@ -72,6 +78,8 @@ export interface CurrentUser {
   roles: string[];
   tenantId?: number;
   tenantCode?: string;
+  /** 租户版别（后端权威，登录响应带回） */
+  tenantEdition?: string;
 }
 
 // 占位 token，后续接 Spring 后端实际字段

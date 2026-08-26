@@ -3,7 +3,6 @@
 跨 app 共享 TS 业务类型。
 
 当前占位（`packages/types/src/index.ts`）：
-
 - `ApiResponse<T>` —— 通用 API 响应包装
 - `HealthStatus` —— 健康状态（admin / mobile / desktop 共享）
 - `UserDTO` —— 用户视图，与 user-service 字段对齐（占位）
