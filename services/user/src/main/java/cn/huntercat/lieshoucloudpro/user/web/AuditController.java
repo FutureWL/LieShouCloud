@@ -47,7 +47,7 @@ public class AuditController {
       @RequestParam(required = false) String resourceType,
       @RequestParam(required = false) String outcome,
       @RequestParam(defaultValue = "100") int limit) {
-    Long tid = parseTenantHeader(tenantHeader);
+    Long tid = TenantContext.parseLong(tenantHeader);
     if (tid == null && !AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "FORBIDDEN"));
     }
@@ -77,20 +77,11 @@ public class AuditController {
   public ResponseEntity<?> count(
       @RequestHeader(value = "X-Tenant-Id", required = false) String tenantHeader,
       @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader) {
-    Long tid = parseTenantHeader(tenantHeader);
+    Long tid = TenantContext.parseLong(tenantHeader);
     if (tid == null && !AuthRoles.hasAny(rolesHeader, AuthRoles.PLATFORM_ADMIN)) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "FORBIDDEN"));
     }
     return ResponseEntity.ok(tid != null ? repo.countByTenantId(tid) : repo.count());
-  }
-
-  private static Long parseTenantHeader(String h) {
-    if (h == null || h.isBlank()) return null;
-    try {
-      return Long.parseLong(h.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private static Action parseAction(String s) {

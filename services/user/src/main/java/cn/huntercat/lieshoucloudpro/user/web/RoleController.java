@@ -87,8 +87,8 @@ public class RoleController {
     Role saved =
         repo.save(new Role(body.code(), body.name(), scopeRole, body.description(), false));
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.CREATE,
         "ROLE",
         saved.getId(),
@@ -137,8 +137,8 @@ public class RoleController {
               }
               Role saved = repo.save(r);
               audit.recordSuccess(
-                  parseLong(tenantHeader),
-                  parseLong(userIdHeader),
+                  TenantContext.parseLong(tenantHeader),
+                  TenantContext.parseLong(userIdHeader),
                   AuditLog.Action.UPDATE,
                   "ROLE",
                   saved.getId(),
@@ -185,23 +185,14 @@ public class RoleController {
     Role r = opt.get();
     repo.delete(r);
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.DELETE,
         "ROLE",
         id,
         "删除角色 " + r.getCode(),
         req);
     return ResponseEntity.noContent().build();
-  }
-
-  private static Long parseLong(String s) {
-    if (s == null || s.isBlank()) return null;
-    try {
-      return Long.parseLong(s.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private ResponseEntity<Object> forbidden() {

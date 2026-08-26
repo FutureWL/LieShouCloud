@@ -141,8 +141,8 @@ public class TenantGrantController {
     UserTenantGrant grant = new UserTenantGrant(user, tenant, role, null);
     grantRepo.save(grant);
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.CREATE,
         "TENANT_GRANT",
         grant.getId(),
@@ -168,8 +168,8 @@ public class TenantGrantController {
         grantRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("授权不存在: " + id));
     grantRepo.delete(grant);
     audit.recordSuccess(
-        parseLong(tenantHeader),
-        parseLong(userIdHeader),
+        TenantContext.parseLong(tenantHeader),
+        TenantContext.parseLong(userIdHeader),
         AuditLog.Action.DELETE,
         "TENANT_GRANT",
         grant.getId(),
@@ -190,14 +190,5 @@ public class TenantGrantController {
         g.getRole().getCode(),
         g.getRole().getName(),
         g.getGrantedAt());
-  }
-
-  private static Long parseLong(String s) {
-    if (s == null || s.isBlank()) return null;
-    try {
-      return Long.parseLong(s);
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 }
