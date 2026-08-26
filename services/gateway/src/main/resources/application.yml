@@ -63,6 +63,15 @@ spring:
           uri: lb://lieshoucloud-user
           predicates:
             - Path=/api/roles/**
+        # 集团版统一账号：跨公司授权 + 可访问租户上下文（Phase 1 §3.2）→ user-service
+        - id: tenant-grant-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/tenant-grants/**
+        - id: tenant-access-route
+          uri: lb://lieshoucloud-user
+          predicates:
+            - Path=/api/tenant-access/**
         # Phase 9 审计日志：平台操作审计 → user-service（crm 的客户审计在 crm-service 内）
         - id: audit-route
           uri: lb://lieshoucloud-user
