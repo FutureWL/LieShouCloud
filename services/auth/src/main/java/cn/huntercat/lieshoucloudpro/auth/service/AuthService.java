@@ -5,9 +5,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import cn.huntercat.lieshoucloudpro.auth.feign.TenantAccessClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.TenantAccessItem;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.UserAuthView;
+import cn.huntercat.lieshoucloudpro.auth.port.TenantAccessPort;
 import cn.huntercat.lieshoucloudpro.auth.port.UserAuthPort;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginWithCodeRequest;
@@ -33,17 +33,17 @@ public class AuthService {
 
   private final JwtService jwt;
   private final UserAuthPort userClient;
-  private final TenantAccessClient tenantAccessClient;
+  private final TenantAccessPort tenantAccessPort;
   private final PasswordEncoder passwordEncoder;
 
   public AuthService(
       JwtService jwt,
       UserAuthPort userClient,
-      TenantAccessClient tenantAccessClient,
+      TenantAccessPort tenantAccessPort,
       PasswordEncoder passwordEncoder) {
     this.jwt = jwt;
     this.userClient = userClient;
-    this.tenantAccessClient = tenantAccessClient;
+    this.tenantAccessPort = tenantAccessPort;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -300,7 +300,7 @@ public class AuthService {
    * 更新为目标子公司租户上下文，各服务请求链自然按新租户处理。
    */
   public TokenResponse switchTenant(Long userId, String username, String tenantCode) {
-    List<TenantAccessItem> access = tenantAccessClient.tenantAccess(userId, userId);
+    List<TenantAccessItem> access = tenantAccessPort.tenantAccess(userId, userId);
     TenantAccessItem target =
         access.stream()
             .filter(i -> i.tenantCode() != null && i.tenantCode().equals(tenantCode))
