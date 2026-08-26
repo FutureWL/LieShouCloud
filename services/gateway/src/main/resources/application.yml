@@ -86,6 +86,16 @@ spring:
           uri: lb://lieshoucloud-inventory
           predicates:
             - Path=/api/products/**
+        # ADR-0037：质检追溯（批次 · 强制 X-Tenant-Id）
+        - id: batch-route
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/api/batches/**
+        # ADR-0037：质检追溯（质检记录 · 强制 X-Tenant-Id）
+        - id: inspection-route
+          uri: lb://lieshoucloud-inventory
+          predicates:
+            - Path=/api/inspections/**
         # Phase 9：财务记账（收支流水 + 汇总 · 强制 X-Tenant-Id）
         - id: finance-route
           uri: lb://lieshoucloud-finance
