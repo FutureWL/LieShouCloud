@@ -21,10 +21,9 @@ import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalAuditLog;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalAuditLogRepository;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequest;
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequestRepository;
-import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
-import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
 import cn.huntercat.lieshoucloudpro.approval.service.ApprovalAuditService;
 import cn.huntercat.lieshoucloudpro.approval.service.ApprovalNotifier;
+import cn.huntercat.lieshoucloudpro.approval.service.ApprovalRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -48,19 +47,19 @@ public class ApprovalController {
   private final ApprovalRequestRepository repo;
   private final ApprovalAuditLogRepository auditRepo;
   private final ApprovalAuditService auditService;
-  private final UserQueryClient userClient;
+  private final ApprovalRequestService requestService;
   private final ApprovalNotifier notifier;
 
   public ApprovalController(
       ApprovalRequestRepository repo,
       ApprovalAuditLogRepository auditRepo,
       ApprovalAuditService auditService,
-      UserQueryClient userClient,
+      ApprovalRequestService requestService,
       ApprovalNotifier notifier) {
     this.repo = repo;
     this.auditRepo = auditRepo;
     this.auditService = auditService;
-    this.userClient = userClient;
+    this.requestService = requestService;
     this.notifier = notifier;
   }
 
@@ -150,35 +149,19 @@ public class ApprovalController {
       @RequestHeader(value = HDR_USER_ID, required = false) String userHeader,
       HttpServletRequest req) {
     Long tid = requireTenant(tenantHeader);
-    Long requesterId = parseUserId(userHeader);
-    if (requesterId == null) {
-      throw new ApprovalForbiddenException("X-User-Id 缺失，无法识别发起人");
-    }
-    // 阶段 2：approverId 可空 —— 业务挂接自动触发时由租户管理员兜底（ADR-0032）
-    Long approverId = resolveApprover(tid, body.approverId());
-    if (approverId == null) {
-      throw new ApproverResolveException("无法解析审批人（租户无可用用户）");
-    }
-    ApprovalRequest a =
-        new ApprovalRequest(
+    // 发起逻辑在领域服务（ARCHITECTURE.md §4.2 下沉 · monolith 进程内契约）
+    ApprovalRequest saved =
+        requestService.createRequest(
             tid,
-            parseTypeRequired(body.type()),
-            body.title().trim(),
+            parseUserId(userHeader),
+            body.type(),
+            body.title(),
             body.amount(),
-            requesterId,
-            approverId);
-    a.setDetail(blankToNull(body.detail()));
-    ApprovalRequest saved = repo.save(a);
-    auditService.recordSuccess(
-        tid,
-        requesterId,
-        ApprovalAuditLog.Action.CREATE,
-        saved.getId(),
-        "发起审批 " + saved.getTitle(),
-        clientIp(req),
-        userAgent(req),
-        req.getHeader("X-Request-Id"));
-    notifier.notifyApprover(tid, saved); // 异步邮件，失败降级不阻塞
+            body.detail(),
+            body.approverId(),
+            clientIp(req),
+            userAgent(req),
+            req.getHeader("X-Request-Id"));
     return ResponseEntity.ok(saved);
   }
 
@@ -386,12 +369,6 @@ public class ApprovalController {
     }
   }
 
-  private ApprovalRequest.Type parseTypeRequired(String value) {
-    ApprovalRequest.Type t = parseType(value);
-    if (t == null) throw new InvalidTypeException(value);
-    return t;
-  }
-
   private ApprovalRequest.Status parseStatus(String value) {
     if (value == null || value.isBlank()) return null;
     try {
@@ -414,28 +391,6 @@ public class ApprovalController {
     return (value == null || value.isBlank()) ? null : value.trim();
   }
 
-  /** 阶段 2：审批人解析 —— 显式指定优先；否则自动选租户管理员（业务挂接 · ADR-0032） */
-  private Long resolveApprover(Long tenantId, Long requested) {
-    if (requested != null) return requested;
-    try {
-      List<UserView> users = userClient.listTenantUsers(String.valueOf(tenantId));
-      if (users == null || users.isEmpty()) return null;
-      return users.stream()
-          .filter(u -> u.roles() != null && u.roles().contains("TENANT_ADMIN"))
-          .findFirst()
-          .map(UserView::id)
-          .orElseGet(
-              () ->
-                  users.stream()
-                      .filter(u -> u.roles() != null && u.roles().contains("PLATFORM_ADMIN"))
-                      .findFirst()
-                      .map(UserView::id)
-                      .orElseGet(() -> users.stream().findFirst().map(UserView::id).orElse(null)));
-    } catch (Exception e) {
-      return null; // user 服务不可用 → 降级为无法解析（调用方可不阻塞业务）
-    }
-  }
-
   private String clientIp(HttpServletRequest req) {
     String xff = req.getHeader("X-Forwarded-For");
     if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
@@ -450,13 +405,6 @@ public class ApprovalController {
   /** 404（跨租户或不存在，统一走 404 防枚举） */
   static class NotFoundException extends RuntimeException {
     NotFoundException(String message) {
-      super(message);
-    }
-  }
-
-  /** 400：审批人无法解析（业务挂接自动触发时租户无用户 / user 服务不可用） */
-  static class ApproverResolveException extends RuntimeException {
-    ApproverResolveException(String message) {
       super(message);
     }
   }
