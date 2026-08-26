@@ -6,9 +6,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import cn.huntercat.lieshoucloudpro.auth.feign.TenantAccessClient;
-import cn.huntercat.lieshoucloudpro.auth.feign.UserAuthClient;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.TenantAccessItem;
 import cn.huntercat.lieshoucloudpro.auth.feign.dto.UserAuthView;
+import cn.huntercat.lieshoucloudpro.auth.port.UserAuthPort;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.LoginWithCodeRequest;
 import cn.huntercat.lieshoucloudpro.auth.web.dto.AuthDtos.RefreshRequest;
@@ -32,13 +32,13 @@ public class AuthService {
   private static final String DEFAULT_TENANT_CODE = "huntercat";
 
   private final JwtService jwt;
-  private final UserAuthClient userClient;
+  private final UserAuthPort userClient;
   private final TenantAccessClient tenantAccessClient;
   private final PasswordEncoder passwordEncoder;
 
   public AuthService(
       JwtService jwt,
-      UserAuthClient userClient,
+      UserAuthPort userClient,
       TenantAccessClient tenantAccessClient,
       PasswordEncoder passwordEncoder) {
     this.jwt = jwt;

@@ -70,6 +70,32 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
 
+        <!-- Port 抽象（ARCHITECTURE.md §4.2）：monolith 模式进程内调用 user 领域服务（UserService）
+             排除传递的持久化依赖（admin 无 DB；JPA/Flyway 仅在 monolith 装配模块直接依赖 user 时引入） -->
+        <dependency>
+            <groupId>cn.huntercat</groupId>
+            <artifactId>lieshoucloud-user</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-jpa</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-postgresql</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- 测试 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

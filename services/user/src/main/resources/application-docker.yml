@@ -8,7 +8,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   # 种子数据（ADR-0027）：docker profile 额外启用 classpath:db/seed（如 R__seed_admin）
   flyway:
-    locations: classpath:db/migration,classpath:db/seed
+    locations: classpath:db/user-migration,classpath:db/seed
     # 全新库多服务并发启动时共享 public schema 存在启动竞态（user 必须最先迁移，
     # 见 OPERATIONS/MEMORY 坑位记录）。baseline-on-migrate + baseline-version 0
     # 使 user 在「库非空但无自身 history」时自动 baseline 并补跑全部迁移，彻底消除竞态；

@@ -7,4 +7,4 @@ spring:
     driver-class-name: org.postgresql.Driver
   # 种子数据（ADR-0027）：dev profile 额外启用 classpath:db/seed（如 R__seed_admin）
   flyway:
-    locations: classpath:db/migration,classpath:db/seed
+    locations: classpath:db/user-migration,classpath:db/seed

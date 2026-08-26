@@ -10,8 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.huntercat.lieshoucloudpro.approval.domain.ApprovalRequest;
-import cn.huntercat.lieshoucloudpro.approval.feign.UserQueryClient;
 import cn.huntercat.lieshoucloudpro.approval.feign.UserView;
+import cn.huntercat.lieshoucloudpro.approval.port.UserQueryPort;
 import java.util.Optional;
 
 /**
@@ -26,12 +26,12 @@ public class ApprovalNotifier {
   private static final Logger log = LoggerFactory.getLogger(ApprovalNotifier.class);
 
   private final Optional<JavaMailSender> mailSender;
-  private final UserQueryClient users;
+  private final UserQueryPort users;
 
   @Value("${EMAIL_FROM_ADDR:lieshoucloud@huntercat.cn}")
   private String fromAddr;
 
-  public ApprovalNotifier(Optional<JavaMailSender> mailSender, UserQueryClient users) {
+  public ApprovalNotifier(Optional<JavaMailSender> mailSender, UserQueryPort users) {
     this.mailSender = mailSender;
     this.users = users;
   }
