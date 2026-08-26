@@ -76,11 +76,11 @@ spring:
           uri: lb://lieshoucloud-auth
           predicates:
             - Path=/api/auth/**
-        # ADR-0025：CRM 客户管理 + 线索池/公海（首个租户内业务模块，强制 X-Tenant-Id）
+        # ADR-0025：CRM 客户管理 + 线索池/公海 + 客户成功中心（首个租户内业务模块，强制 X-Tenant-Id）
         - id: crm-route
           uri: lb://lieshoucloud-crm
           predicates:
-            - Path=/api/customers/**,/api/leads/**
+            - Path=/api/customers/**,/api/leads/**,/api/letters/**,/api/responses/**,/api/customer-success/**
         # Phase 9：进销存（商品 + 出入库流水 · 强制 X-Tenant-Id）
         - id: inventory-route
           uri: lb://lieshoucloud-inventory
